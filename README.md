@@ -6,3 +6,4 @@ Missouri S&amp;T Multirotor Robot Design Team's code for the Association for Unm
 pip install pre-commit
 pre-commit install
 ```
+    > `branch_name` should follow the convention `feature/{feature_name}`, or `hotfix/{fix_name}`
