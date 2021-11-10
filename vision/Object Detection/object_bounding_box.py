@@ -7,7 +7,7 @@ import argparse
 import random
 
 
-def get_bounding_image(img, contour):
+def get_bounding_image(img: np.array, contour: np.array) -> np.array:
     """
     Calculate the bounding box with the given contour and then crop the given image.
 
