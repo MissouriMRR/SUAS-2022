@@ -21,7 +21,7 @@ jobs:
       - name: Reformat code with Black
         run: |
           black .
-  type-check:
+  type-check-flight:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -38,8 +38,20 @@ jobs:
       - name: Perform static type check on flight code
         run: |
           mypy ./flight
-      - name: Perform static type check on vision code
-        run: |
-          mypy ./vision
-
-
+  type-check-vision:
+      runs-on: ubuntu-latest
+      steps:
+        - uses: actions/checkout@v2
+        - name: Set up Python environment
+          uses: actions/setup-python@v1
+          with:
+            python-version: 3.7
+        - name: Install dependencies
+          run: |
+            python -v
+            python -m pip install --upgrade pip
+            pip install mypy
+            pip install opencv-python
+        - name: Perform static type check on vision code
+          run: |
+            mypy ./vision
