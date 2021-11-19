@@ -5,7 +5,7 @@ on:
       - 'feature/*'
       - 'hotfix/*'
 jobs:
-  formatter:
+  format:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -21,3 +21,23 @@ jobs:
       - name: Reformat code with Black
         run: |
           black .
+  type-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python environment
+        uses: actions/setup-python@v1
+        with:
+          python-version: 3.7
+      - name: Install dependencies
+        run: |
+          python -v
+          python -m pip install --upgrade pip
+          pip install mypy
+          pip install opencv-python
+      - name: Perform static type check
+        run: |
+          mypy ./flight
+          mypy ./vision
+
+
