@@ -1,0 +1,23 @@
+name: Build Feature
+on:
+  push:
+    branches:
+      - 'feature/*'
+      - 'hotfix/*'
+jobs:
+  formatter:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python environment
+        uses: actions/setup-python@v1
+        with:
+          python-version: 3.7
+      - name: Install dependencies
+        run: |
+          python -v
+          python -m pip install --upgrade pip
+          pip install black
+      - name: Reformat code with Black
+        run: |
+          black .
