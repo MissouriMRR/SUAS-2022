@@ -35,9 +35,11 @@ jobs:
           python -m pip install --upgrade pip
           pip install mypy
           pip install opencv-python
-      - name: Perform static type check
+      - name: Perform static type check on flight code
         run: |
           mypy ./flight
+      - name: Perform static type check on vision code
+        run: |
           mypy ./vision
 
 
