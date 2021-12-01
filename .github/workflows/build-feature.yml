@@ -6,6 +6,8 @@ on:
       - 'hotfix/*'
 jobs:
   format:
+    # Ensure the PR is not from a fork
+    if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -18,9 +20,18 @@ jobs:
           python -v
           python -m pip install --upgrade pip
           pip install black
-      - name: Reformat code with Black
+      - name: Check formatting with Black
+        run: black --check .
+      - name: If format is invalid, reformat with Black
+        if: failure()
         run: |
           black .
+          git config --global user.name "MultirotorBot"
+          git config --global user.email "mstmultirotor@umsystem.edu"
+          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/$GITHUB_REPOSITORY
+          git checkout $GITHUB_HEAD_REF
+          git commit -am "Autoformat Python code with Black"
+          git push
   type-check-flight:
     runs-on: ubuntu-latest
     steps:
