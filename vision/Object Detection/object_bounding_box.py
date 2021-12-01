@@ -6,21 +6,20 @@ import numpy as np
 import argparse
 import random
 
-
 def get_bounding_image(img: np.ndarray, contour: np.ndarray) -> np.ndarray:
     """
     Calculate the bounding box with the given contour and then crop the given image.
 
     Parameters
     ----------
-    img: numpy.array
+    img: numpy.ndarray
         The input image to be cropped.
-    contour: numpy.array
+    contour: numpy.ndarray
         The contour located in the given image. Used to find bounding box for cropping.
 
     Returns
     -------
-    numpy.array - Cropped image.
+    numpy.ndarray - Cropped image.
     """
     # Find the bounding box of the contour.
     x, y, w, h = cv2.boundingRect(contour)
