@@ -7,10 +7,14 @@ on:
 jobs:
   format:
     # Ensure the PR is not from a fork
-    if: github.event.pull_request.head.repo.full_name == github.repository
+    # if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+      - name: Test PR variables
+        run: |
+          echo github.event.pull_request.head.repo.full_name
+          echo github.repository
       - name: Set up Python environment
         uses: actions/setup-python@v1
         with:
