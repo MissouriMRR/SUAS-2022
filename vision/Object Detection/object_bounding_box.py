@@ -23,7 +23,7 @@ def get_bounding_image(img: np.ndarray, contour: np.ndarray) -> np.ndarray:
     numpy.ndarray - Cropped image.
     """
     # Find the bounding box of the contour.
-    x,y,w,h=cv2.boundingRect(contour)
+    x, y, w, h = cv2.boundingRect(contour)
     # Return the cropped image using numpy splicing.
     return img[y : y + h, x : x + w]
 
