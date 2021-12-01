@@ -6,15 +6,10 @@ on:
       - 'hotfix/*'
 jobs:
   format:
-    # Ensure the PR is not from a fork
-    # if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
       - name: Test PR variables
-        run: |
-          echo github.event.pull_request.head.repo.full_name
-          echo github.repository
       - name: Set up Python environment
         uses: actions/setup-python@v1
         with:
@@ -34,7 +29,7 @@ jobs:
           git config --global user.email "mstmultirotor@umsystem.edu"
           git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/$GITHUB_REPOSITORY
           git checkout $GITHUB_HEAD_REF
-          git commit -am "Autoformat Python code with Black"
+          git commit -a -m "Autoformat Python code with Black" -m "Note that any changes made to the remote branch by this autoformatter will not be replicated on your local environment. To update your local branch with the formatting changes, run `git pull` or `black .`"
           git push
   type-check-flight:
     runs-on: ubuntu-latest
