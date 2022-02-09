@@ -30,6 +30,19 @@ def get_text_color():
     """
     return
 
+'''
+Random Ideas:
+- seperate detection functions
+    - detect general - detection for when drone is just flying around
+    - detect on object - detection for when object has been identified, will crop/rotate image to encompass the object and then detect text
+- multiprocess image on each of 4 axis for text
+    - would be quicker and check multiple angles for the text
+    - would need function to map detected text back to unrotated images
+- text color
+    - find average color of area within detected text and map to nearest color in interop
+    OR
+    - check for each color from interop within detected text - slower
+'''
 
 if __name__ == "__main__":
     """
