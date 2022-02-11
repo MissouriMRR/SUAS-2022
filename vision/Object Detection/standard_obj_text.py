@@ -39,6 +39,18 @@ def get_text_color(img: np.ndarray, bounds: np.ndarray) -> np.ndarray:
     kmeans to filter down to most common color in bounds
         - likely to be the color of the text
     get average color after kmeans
+
+    Parameters
+    ----------
+    img : np.ndarray
+        the image the text is in
+    bounds : np.ndarray
+        bounds of the text
+
+    Returns
+    -------
+    np.ndarray
+        the color of the text
     """
     # kmeans to get single color
     cropped_img = img[bounds[0, 0] : bounds[2, 0], bounds[0, 1] : bounds[2, 1]]
@@ -94,7 +106,7 @@ def detect_text(img: np.ndarray, bounds: np.ndarray = None) -> np.ndarray:
     for i, txt in enumerate(txt_data):
         if txt != None and len(txt) == 1:  # length of 1
             # must be uppercase letter or number
-            if isupper(txt) or txt.isnumeric():
+            if (txt.isalpha() and isupper(txt)) or txt.isnumeric():
                 # get data for each text object detected
                 x = txt_data["left"][i]
                 y = txt_data["top"][i]
