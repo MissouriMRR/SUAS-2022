@@ -32,17 +32,29 @@ def get_text_color(img: np.ndarray, bounds: np.ndarray) -> np.ndarray:
     Detect the color of the text.
     Will return interop_api_pb2.Odlc.%COLOR% for odlc.alphanumeric_color
     ## TODO: change to return type to interop enum class
+    Need way to filter out object color from text color.
 
     Ideas
     -----
-     - find average color of area within detected text and map to nearest color in interop
-    OR
-    - check for each color from interop within detected text - slower
+    kmeans to filter down to most common color in bounds
+        - likely to be the color of the text
+    get average color after kmeans
     """
+    # kmeans to get single color
+    cropped_img = img[bounds[0, 0] : bounds[2, 0], bounds[0, 1] : bounds[2, 1]]
+    # kmeans_img = cv2.kmeans(cropped_img, K=1,)
 
+    # get average color of detected text
     color = np.array(
-        [np.mean(img[:, :, 0]), np.mean(img[:, :, 1]), np.mean(img[:, :, 2])]
+        [
+            np.mean(img[:, :, 0]),
+            np.mean(img[:, :, 1]),
+            np.mean(img[:, :, 2]),
+        ]  ## TODO: swtich to kmeans image
     )
+
+    # map detected color to available colors in competition
+    ## TODO: need to get way to correlate to available competition colors
 
     return color
 
@@ -98,18 +110,6 @@ def detect_text(img: np.ndarray, bounds: np.ndarray = None) -> np.ndarray:
 
     return found_characters
 
-
-"""
-Random Ideas:
-- seperate detection functions
-    - detect general - detection for when drone is just flying around
-    - detect on object - detection for when object has been identified, will crop/rotate image to encompass the object and then detect text
-- multiprocess image on each of 4 axis for text
-    - would be quicker and check multiple angles for the text
-    - would need function to map detected text back to unrotated images
-- text color
-
-"""
 
 if __name__ == "__main__":
     """
