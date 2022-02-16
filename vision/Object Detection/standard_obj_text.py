@@ -119,19 +119,19 @@ def detect_text(img: np.ndarray, bounds: np.ndarray = None) -> np.ndarray:
     )
     print(txt_data)
     # filter detected text to find valid characters
-    found_characters = np.array([])
+    found_characters = []
     for i, txt in enumerate(txt_data["text"]):
-        print("Text:", txt)
-        x = txt_data["left"][i]
-        y = txt_data["top"][i]
-        w = txt_data["width"][i]
-        h = txt_data["height"][i]
-        bounds = [(x, y), (x + w, y), (x + w, y + h), (x, y + h), (x, y)]
+        # Shows all detected text ## TODO: remove
+        # print("Text:", txt)
+        # x = txt_data["left"][i]
+        # y = txt_data["top"][i]
+        # w = txt_data["width"][i]
+        # h = txt_data["height"][i]
+        # bounds = [(x, y), (x + w, y), (x + w, y + h), (x, y + h), (x, y)]
+        # for j in range(4):
+            # cv2.line(output_image, bounds[j], bounds[j+1], (0, 255, 0), thickness=2)
 
-        for j in range(4):
-            cv2.line(output_image, bounds[j], bounds[j+1], (0, 255, 0), thickness=2)
-
-        if txt != None and len(txt) == 1:  # length of 1
+        if (txt != None) and (len(txt) == 1):  # length of 1
             # must be uppercase letter or number
             if (txt.isalpha() and isupper(txt)) or txt.isnumeric():
                 # get data for each text object detected
@@ -146,11 +146,17 @@ def detect_text(img: np.ndarray, bounds: np.ndarray = None) -> np.ndarray:
                 # color = get_text_color(img, bounds) # TODO: uncomment when implemented
 
                 # add to found characters array
-                found_characters = np.append(found_characters, (txt, bounds, color))
+                found_characters += [(txt, bounds, color)]
+    
+    for c in found_characters:
+        cv2.line(output_image, c[1][0], c[1][1], (0, 0, 255), thickness=2)
+        cv2.line(output_image, c[1][1], c[1][2], (0, 0, 255), thickness=2)
+        cv2.line(output_image, c[1][2], c[1][3], (0, 0, 255), thickness=2)
+        cv2.line(output_image, c[1][3], c[1][0], (0, 0, 255), thickness=2)
 
-    # cv2.imshow("Output", output_image)
-    # cv2.waitKey(0)
-    # cv2.destroyAllWindows()
+    cv2.imshow("Output", output_image)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
 
     return found_characters
 
@@ -159,7 +165,7 @@ if __name__ == "__main__":
     """
     Driver for testing text detection and classification functions.
     """
-    img = cv2.imread("/home/cameron/Documents/GitHub/SUAS-2022/vision/Object Detection/letter_a.jpg")
+    img = cv2.imread("/home/cameron/Documents/GitHub/SUAS-2022/vision/Object Detection/text_y.jpg")
 
     detected_chars = detect_text(img)
     
