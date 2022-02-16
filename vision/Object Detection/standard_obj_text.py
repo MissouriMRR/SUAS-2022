@@ -95,15 +95,42 @@ def detect_text(img: np.ndarray, bounds: np.ndarray = None) -> np.ndarray:
     if bounds != None:
         corrected_img = splice_rotate_img(img, bounds)
 
+    # Image processing to make text more clear
+    gray_img = cv2.cvtColor(corrected_img, cv2.COLOR_RGB2GRAY)
+
+    blurred_img = cv2.GaussianBlur(gray_img, ksize=(5, 5), sigmaX=0)
+    
+    # cv2.imshow("Blurred", blurred_img)
+    # cv2.waitKey(0)
+    # cv2.destroyAllWindows()
+    
+    # laplace_img = cv2.Laplacian(blurred_img, ddepth=cv2.CV_8U, ksize=5)
+
+    # cv2.imshow("Laplacian", laplace_img)
+    # cv2.waitKey(0)
+    # cv2.destroyAllWindows()
+
+    output_image = np.dstack((blurred_img, blurred_img, blurred_img))
+
+    print("Image processing complete.")
     # detect text
     txt_data = pytesseract.image_to_data(
-        corrected_img, output_type=pytesseract.Output.DICT, lang="eng"
+        blurred_img, output_type=pytesseract.Output.DICT, lang="eng", config='--psm 10'
     )
-
-    found_characters = np.array([])
-
+    print(txt_data)
     # filter detected text to find valid characters
-    for i, txt in enumerate(txt_data):
+    found_characters = np.array([])
+    for i, txt in enumerate(txt_data["text"]):
+        print("Text:", txt)
+        x = txt_data["left"][i]
+        y = txt_data["top"][i]
+        w = txt_data["width"][i]
+        h = txt_data["height"][i]
+        bounds = [(x, y), (x + w, y), (x + w, y + h), (x, y + h), (x, y)]
+
+        for j in range(4):
+            cv2.line(output_image, bounds[j], bounds[j+1], (0, 255, 0), thickness=2)
+
         if txt != None and len(txt) == 1:  # length of 1
             # must be uppercase letter or number
             if (txt.isalpha() and isupper(txt)) or txt.isnumeric():
@@ -115,10 +142,15 @@ def detect_text(img: np.ndarray, bounds: np.ndarray = None) -> np.ndarray:
 
                 bounds = [(x, y), (x + w, y), (x + w, y + h), (x, y + h)]
 
-                color = get_text_color(img, bounds)
+                color = 'Green' # TODO: remove
+                # color = get_text_color(img, bounds) # TODO: uncomment when implemented
 
                 # add to found characters array
                 found_characters = np.append(found_characters, (txt, bounds, color))
+
+    # cv2.imshow("Output", output_image)
+    # cv2.waitKey(0)
+    # cv2.destroyAllWindows()
 
     return found_characters
 
@@ -127,7 +159,8 @@ if __name__ == "__main__":
     """
     Driver for testing text detection and classification functions.
     """
-    img = cv2.imread("test_image.jpg")
-    img_rgb = cv2.cvtColor(
-        img, cv2.COLOR_BGR2RGB
-    )  # Convert to RGB ## TODO: remove, not needed for camera feed, only for opencv imreads
+    img = cv2.imread("/home/cameron/Documents/GitHub/SUAS-2022/vision/Object Detection/letter_a.jpg")
+
+    detected_chars = detect_text(img)
+    
+    print("The following characters were found in the image:", detected_chars)
