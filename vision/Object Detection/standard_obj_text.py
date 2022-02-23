@@ -72,13 +72,18 @@ class TextDetection:
                     w = txt_data["width"][i]
                     h = txt_data["height"][i]
 
-                    bounds = [(x, y), (x + w, y), (x + w, y + h), (x, y + h)]
+                    # Don't continue processing if text is size of full image
+                    img_h, img_w = np.shape(processed_img)
+                    if not (x == 0 and y == 0 and w == img_w and h == img_h):
+                        print("Full-image text")
 
-                    color = "Green"  # TODO: remove
-                    # color = get_text_color(img, bounds) # TODO: uncomment when implemented
+                        bounds = [(x, y), (x + w, y), (x + w, y + h), (x, y + h)]
 
-                    # add to found characters array
-                    found_characters += [(txt, bounds, color)]
+                        color = "Green"  # TODO: remove
+                        # color = get_text_color(img, bounds) # TODO: uncomment when implemented
+
+                        # add to found characters array
+                        found_characters += [(txt, bounds, color)]
 
         ## TODO: convert bound coordinates back to regular image if rotated
 
@@ -213,10 +218,12 @@ class TextDetection:
         # binarize image
         binarized = np.where(laplace_img > 50, np.uint8(255), np.uint8(0))
 
+        blur_2 = cv2.medianBlur(binarized, ksize=3)
+
         # edge detection
         # edges = cv2.Canny(laplace_img, 100, 200)
 
-        return binarized
+        return blur_2
         # return binarized
 
 
