@@ -6,15 +6,41 @@ import numpy as np
 import pytesseract
 
 
-class TextDetection:
+class TextCharacteristics:
     """
-    Class for handling detection of text on standard objects.
+    Class for detecting characteristics of text on standard objects.
     """
 
     def __init__(self):
         self.image = np.array([])
 
-    def detect_text(self, img: np.ndarray, bounds: np.ndarray = None) -> np.ndarray:
+    def get_text_characteristics(self, img: np.ndarray, bounds: np.ndarray) -> tuple:
+        """
+        Gets the characteristics of the text on the standard object.
+
+        Parameters
+        ----------
+        img : np.ndarray
+            image to find characteristics of text within
+        bounds : np.ndarray
+            bounds of standard object containing text on in image
+
+        Returns
+        -------
+        tuple
+            characteristics of the text in the form (character, orientation, color)
+        """
+        characters = self._detect_text(img, bounds)
+        if len(characters) != 1:
+            return (None, None, None)
+        character, char_bounds = characters[0]
+
+        orientation = self._get_orientation(img, char_bounds)
+        color = self._get_text_color(img, char_bounds)
+
+        return (character, orientation, color)
+
+    def _detect_text(self, img: np.ndarray, bounds: np.ndarray) -> np.ndarray:
         """
         Detect text within an image.
         Will return string for parameter odlc.alphanumeric
@@ -30,29 +56,15 @@ class TextDetection:
         -------
         np.ndarray
             np.ndarray containing detected characters, format: ([bounds], 'character', color)
-
-        ## TODO: Documentation to be updated later
         """
-        cv2.imshow("Original Image", img)  ## TODO: remove all imshows
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
-
         # correct image if necessary
-        corrected_img = img
-        if bounds != None:
-            corrected_img = self._slice_rotate_img(img, bounds)
+        rotated_img = self._slice_rotate_img(img, bounds)
 
-        # Image processing to make text more clear
-        processed_img = self._preprocess_img(corrected_img)
-
-        cv2.imshow("Processed Image", processed_img)
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
-
-        # output_image = np.dstack((blurred_img, blurred_img, blurred_img))
+        ## Image preprocessing to make text more clear ##
+        processed_img = self._preprocess_img(rotated_img)
         output_image = np.dstack((processed_img, processed_img, processed_img))
 
-        # detect text
+        ## Detect Text ##
         print("Image processing complete.")
         txt_data = pytesseract.image_to_data(
             output_image,
@@ -60,8 +72,8 @@ class TextDetection:
             lang="eng",
             config="--psm 10",
         )
-        print(txt_data)
-        # filter detected text to find valid characters
+
+        ## Filter detected text to find valid characters ##
         found_characters = []
         for i, txt in enumerate(txt_data["text"]):
             if (txt != None) and (len(txt) == 1):  # length of 1
@@ -78,21 +90,8 @@ class TextDetection:
                     if not (x == 0 and y == 0 and w == img_w and h == img_h):
                         bounds = [(x, y), (x + w, y), (x + w, y + h), (x, y + h)]
 
-                        color = self._get_text_color(img, bounds)
-
                         # add to found characters array
-                        found_characters += [(txt, bounds, color)]
-
-        # Draw bounds of detected character
-        for c in found_characters:
-            cv2.line(output_image, c[1][0], c[1][1], (0, 0, 255), thickness=2)
-            cv2.line(output_image, c[1][1], c[1][2], (0, 0, 255), thickness=2)
-            cv2.line(output_image, c[1][2], c[1][3], (0, 0, 255), thickness=2)
-            cv2.line(output_image, c[1][3], c[1][0], (0, 0, 255), thickness=2)
-
-        cv2.imshow("Output", output_image)
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
+                        found_characters += [(txt, bounds)]
 
         return found_characters
 
@@ -112,10 +111,26 @@ class TextDetection:
         str
             the color of the text
         """
-        ## TEMP: Initial Code to provide broad outline, out of scope of current issue
+        ## TEMP: Implemmentation out of scope of current issue
         color = "Green"
 
         return color
+
+    def _get_orientation(self, img: np.ndarray, bounds: np.ndarray) -> str:
+        """
+        Get the orientation of the text.
+
+        Parameters
+        ----------
+        img : np.ndarray
+            the image the text is in
+        bounds : np.ndarray
+            bounds of the text
+        """
+        ## TEMP: Implemmentation out of scope of current issue
+        orientation = "N"
+
+        return orientation
 
     def _slice_rotate_img(self, img: np.ndarray, bounds: np.ndarray) -> np.ndarray:
         """
@@ -152,10 +167,9 @@ class TextDetection:
         )
 
         # Get angle of rotation
+        ## TODO: 1st index depends on how bounds stored for standard object
         tl_x = bounds[0][0]
-        tr_x = bounds[3][
-            0
-        ]  ## TODO: 1st index depends on how bounds stored for standard object
+        tr_x = bounds[3][0]
         tl_y = bounds[0][1]
         tr_y = bounds[3][1]
         angle = np.rad2deg(np.arctan((tr_y - tl_y) / (tr_x - tl_x)))
@@ -166,10 +180,6 @@ class TextDetection:
         rotated_img = cv2.warpAffine(
             cropped_img, rot_mat, cropped_img.shape[1::-1], flags=cv2.INTER_LINEAR
         )
-
-        cv2.imshow("Rotated image", rotated_img)
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
 
         return rotated_img
 
@@ -219,8 +229,8 @@ if __name__ == "__main__":
 
     bounds = [[77, 184], [3, 91], [120, 0], [194, 82]]
 
-    detector = TextDetection()
+    detector = TextCharacteristics()
 
-    detected_chars = detector.detect_text(img, bounds)
+    detected_chars = detector.get_text_characteristics(img, bounds)
 
-    print("The following characters were found in the image:", detected_chars)
+    print("The following character was found in the image:", detected_chars)
