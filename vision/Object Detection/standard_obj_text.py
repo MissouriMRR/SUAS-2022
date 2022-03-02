@@ -1,6 +1,7 @@
 """
-Functions related to detecting the text of standard objects.
+Algorithms related to detecting the text of standard objects.
 """
+
 import cv2
 import numpy as np
 import pytesseract
@@ -9,6 +10,7 @@ import pytesseract
 class TextCharacteristics:
     """
     Class for detecting characteristics of text on standard objects.
+    Characteristics consist of the character, orientation, and color.
     """
 
     def __init__(self):
@@ -30,17 +32,21 @@ class TextCharacteristics:
         tuple
             characteristics of the text in the form (character, orientation, color)
         """
+        ## Get the character ##
         characters = self._detect_text(img, bounds)
         if len(characters) != 1:
             return (None, None, None)
         character, char_bounds = characters[0]
 
+        ## Get the orientation ##
         orientation = self._get_orientation(img, char_bounds)
+
+        ## Get the color of the text ##
         color = self._get_text_color(img, char_bounds)
 
         return (character, orientation, color)
 
-    def _detect_text(self, img: np.ndarray, bounds: np.ndarray) -> np.ndarray:
+    def _detect_text(self, img: np.ndarray, bounds: np.ndarray) -> list:
         """
         Detect text within an image.
         Will return string for parameter odlc.alphanumeric
@@ -54,10 +60,10 @@ class TextCharacteristics:
 
         Returns
         -------
-        np.ndarray
-            np.ndarray containing detected characters, format: ([bounds], 'character', color)
+        list
+            list containing detected characters and their bounds, Format of characters is ([bounds], 'character').
         """
-        # correct image if necessary
+        ## Crop and rotate the image ##
         rotated_img = self._slice_rotate_img(img, bounds)
 
         ## Image preprocessing to make text more clear ##
@@ -148,7 +154,7 @@ class TextCharacteristics:
         np.ndarray
             the spliced/rotated images
         """
-        # Slice image around bounds and find center point
+        ## Slice image around bounds and find center point ##
         x_vals = [coord[0] for coord in bounds]
         y_vals = [coord[1] for coord in bounds]
         min_x = np.amin(x_vals)
@@ -166,16 +172,15 @@ class TextCharacteristics:
             ),
         )
 
-        # Get angle of rotation
+        ## Get angle of rotation ##
         ## TODO: 1st index depends on how bounds stored for standard object
         tl_x = bounds[0][0]
         tr_x = bounds[3][0]
         tl_y = bounds[0][1]
         tr_y = bounds[3][1]
         angle = np.rad2deg(np.arctan((tr_y - tl_y) / (tr_x - tl_x)))
-        self.angle = angle
 
-        # Rotate image
+        ## Rotate image ##
         rot_mat = cv2.getRotationMatrix2D(center_pt, angle, 1.0)
         rotated_img = cv2.warpAffine(
             cropped_img, rot_mat, cropped_img.shape[1::-1], flags=cv2.INTER_LINEAR
@@ -208,12 +213,13 @@ class TextCharacteristics:
         eroded = cv2.erode(blur, kernel=kernel, iterations=1)
         dilated = cv2.dilate(eroded, kernel=kernel, iterations=1)
 
+        # laplace edge detection
         laplace_img = cv2.Laplacian(dilated, ddepth=cv2.CV_8U, ksize=5)
 
         # binarize image
         binarized = np.where(laplace_img > 50, np.uint8(255), np.uint8(0))
 
-        # Additional blur to remove noise
+        # additional blur to remove noise
         blur_2 = cv2.medianBlur(binarized, ksize=3)
 
         return blur_2
@@ -226,11 +232,9 @@ if __name__ == "__main__":
     img = cv2.imread(
         "/home/cameron/Documents/GitHub/SUAS-2022/vision/Object Detection/text_y.jpg"
     )
-
     bounds = [[77, 184], [3, 91], [120, 0], [194, 82]]
 
     detector = TextCharacteristics()
-
     detected_chars = detector.get_text_characteristics(img, bounds)
 
     print("The following character was found in the image:", detected_chars)
