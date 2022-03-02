@@ -1,9 +1,7 @@
 """
 Functions related to detecting the text of standard objects.
 """
-from curses.ascii import isupper
 import cv2
-from matplotlib.pyplot import get
 import numpy as np
 import pytesseract
 
@@ -14,7 +12,7 @@ class TextDetection:
     """
 
     def __init__(self):
-        self.angle = 0
+        self.image = np.array([])
 
     def detect_text(self, img: np.ndarray, bounds: np.ndarray = None) -> np.ndarray:
         """
@@ -35,6 +33,10 @@ class TextDetection:
 
         ## TODO: Documentation to be updated later
         """
+        cv2.imshow("Original Image", img)  ## TODO: remove all imshows
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
+
         # correct image if necessary
         corrected_img = img
         if bounds != None:
@@ -50,8 +52,8 @@ class TextDetection:
         # output_image = np.dstack((blurred_img, blurred_img, blurred_img))
         output_image = np.dstack((processed_img, processed_img, processed_img))
 
-        print("Image processing complete.")
         # detect text
+        print("Image processing complete.")
         txt_data = pytesseract.image_to_data(
             output_image,
             output_type=pytesseract.Output.DICT,
@@ -64,8 +66,7 @@ class TextDetection:
         for i, txt in enumerate(txt_data["text"]):
             if (txt != None) and (len(txt) == 1):  # length of 1
                 # must be uppercase letter or number
-                if txt.isalpha() or txt.isnumeric():
-                    # if (txt.isalpha() and isupper(txt)) or txt.isnumeric():
+                if (txt.isalpha() and txt.isupper()) or txt.isnumeric():
                     # get data for each text object detected
                     x = txt_data["left"][i]
                     y = txt_data["top"][i]
@@ -75,17 +76,12 @@ class TextDetection:
                     # Don't continue processing if text is size of full image
                     img_h, img_w = np.shape(processed_img)
                     if not (x == 0 and y == 0 and w == img_w and h == img_h):
-                        print("Full-image text")
-
                         bounds = [(x, y), (x + w, y), (x + w, y + h), (x, y + h)]
 
-                        color = "Green"  # TODO: remove
-                        # color = get_text_color(img, bounds) # TODO: uncomment when implemented
+                        color = self._get_text_color(img, bounds)
 
                         # add to found characters array
                         found_characters += [(txt, bounds, color)]
-
-        ## TODO: convert bound coordinates back to regular image if rotated
 
         # Draw bounds of detected character
         for c in found_characters:
@@ -100,18 +96,9 @@ class TextDetection:
 
         return found_characters
 
-    def get_text_color(self, img: np.ndarray, bounds: np.ndarray) -> np.ndarray:
+    def _get_text_color(self, img: np.ndarray, bounds: np.ndarray) -> str:
         """
         Detect the color of the text.
-        Will return interop_api_pb2.Odlc.%COLOR% for odlc.alphanumeric_color
-        ## TODO: change to return type to interop enum class
-        Need way to filter out object color from text color.
-
-        Ideas
-        -----
-        kmeans to filter down to most common color in bounds
-            - likely to be the color of the text
-        get average color after kmeans
 
         Parameters
         ----------
@@ -122,24 +109,11 @@ class TextDetection:
 
         Returns
         -------
-        np.ndarray
+        str
             the color of the text
         """
-        # kmeans to get single color
-        cropped_img = img[bounds[0, 0] : bounds[2, 0], bounds[0, 1] : bounds[2, 1]]
-        # kmeans_img = cv2.kmeans(cropped_img, K=1,)
-
-        # get average color of detected text
-        color = np.array(
-            [
-                np.mean(img[:, :, 0]),
-                np.mean(img[:, :, 1]),
-                np.mean(img[:, :, 2]),
-            ]  ## TODO: swtich to kmeans image
-        )
-
-        # map detected color to available colors in competition
-        ## TODO: need to get way to correlate to available competition colors
+        ## TEMP: Initial Code to provide broad outline, out of scope of current issue
+        color = "Green"
 
         return color
 
@@ -159,25 +133,38 @@ class TextDetection:
         np.ndarray
             the spliced/rotated images
         """
-        # Find center point
-        min_x = np.amin(bounds[:][0])
-        max_x = np.amax(bounds[:][0])
-        min_y = np.amin(bounds[:][1])
-        max_y = np.amax(bounds[:][1])
-        center_pt = (int((max_x + min_x) / 2), int((max_y + min_y) / 2))
+        # Slice image around bounds and find center point
+        x_vals = [coord[0] for coord in bounds]
+        y_vals = [coord[1] for coord in bounds]
+        min_x = np.amin(x_vals)
+        max_x = np.amax(x_vals)
+        min_y = np.amin(y_vals)
+        max_y = np.amax(y_vals)
+
+        cropped_img = img[min_x:max_x][min_y:max_y][:]
+
+        dimensions = np.shape(cropped_img)
+        center_pt = (
+            int(dimensions[0] / 2),
+            int(
+                dimensions[1] / 2,
+            ),
+        )
 
         # Get angle of rotation
         tl_x = bounds[0][0]
-        tr_x = bounds[1][0]
+        tr_x = bounds[3][
+            0
+        ]  ## TODO: 1st index depends on how bounds stored for standard object
         tl_y = bounds[0][1]
-        tr_y = bounds[1][1]
+        tr_y = bounds[3][1]
         angle = np.rad2deg(np.arctan((tr_y - tl_y) / (tr_x - tl_x)))
         self.angle = angle
 
         # Rotate image
         rot_mat = cv2.getRotationMatrix2D(center_pt, angle, 1.0)
         rotated_img = cv2.warpAffine(
-            img, rot_mat, img.shape[1::-1], flags=cv2.INTER_LINEAR
+            cropped_img, rot_mat, cropped_img.shape[1::-1], flags=cv2.INTER_LINEAR
         )
 
         cv2.imshow("Rotated image", rotated_img)
@@ -206,8 +193,6 @@ class TextDetection:
         # blur to remove noise
         blur = cv2.medianBlur(gray, ksize=9)
 
-        # thresh = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
-
         # erode and dilate to increase text clarity and reduce noise
         kernel = np.ones((5, 5), np.uint8)
         eroded = cv2.erode(blur, kernel=kernel, iterations=1)
@@ -218,13 +203,10 @@ class TextDetection:
         # binarize image
         binarized = np.where(laplace_img > 50, np.uint8(255), np.uint8(0))
 
+        # Additional blur to remove noise
         blur_2 = cv2.medianBlur(binarized, ksize=3)
 
-        # edge detection
-        # edges = cv2.Canny(laplace_img, 100, 200)
-
         return blur_2
-        # return binarized
 
 
 if __name__ == "__main__":
@@ -234,11 +216,8 @@ if __name__ == "__main__":
     img = cv2.imread(
         "/home/cameron/Documents/GitHub/SUAS-2022/vision/Object Detection/text_y.jpg"
     )
-    # img = cv2.imread(
-    #     "/home/cameron/Documents/GitHub/SUAS-2022/vision/Object Detection/letter_a.jpg"
-    # )
 
-    bounds = [[14, 63], [112, 5], [192, 231], [94, 173]]
+    bounds = [[77, 184], [3, 91], [120, 0], [194, 82]]
 
     detector = TextDetection()
 
