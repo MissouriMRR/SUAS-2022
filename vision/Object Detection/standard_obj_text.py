@@ -229,9 +229,30 @@ if __name__ == "__main__":
     """
     Driver for testing text detection and classification functions.
     """
-    img = cv2.imread(
-        "/home/cameron/Documents/GitHub/SUAS-2022/vision/Object Detection/text_y.jpg"
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        description="Runs text characteristics algorithms. Must specify a file."
     )
+
+    parser.add_argument(
+        "-f",
+        "--file_name",
+        type=str,
+        help="Filename of the image. Required argument.",
+    )
+
+    args = parser.parse_args()
+
+    # no benchmark name specified, cannot continue
+    if not args.file_name:
+        raise RuntimeError("No file specified.")
+    file_name = args.file_name
+
+    img = cv2.imread(file_name)
+
+    # bounds for stock image, given by standard object detection
+    ## TODO: Change to function once implemented
     bounds = [[77, 184], [3, 91], [120, 0], [194, 82]]
 
     detector = TextCharacteristics()
