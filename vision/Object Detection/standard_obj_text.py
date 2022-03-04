@@ -3,8 +3,24 @@ Algorithms related to detecting the text of standard objects.
 """
 
 import cv2
+from cv2 import kmeans
 import numpy as np
 import pytesseract
+
+# Possible colors
+colors = {
+    "WHITE": (255, 255, 255),
+    "BLACK": (0, 0, 0),
+    "GRAY": (127, 127, 127),
+    "RED": (255, 0, 0),
+    "BLUE": (0, 0, 255),
+    "GREEN": (0, 255, 0),
+    "YELLOW": (),
+    "PURPLE": (),
+    "BROWN": (),
+    "ORANGE": (),
+    "BLACK": (),
+}
 
 
 class TextCharacteristics:
@@ -14,7 +30,7 @@ class TextCharacteristics:
     """
 
     def __init__(self):
-        self.image = np.array([])
+        self.rotated_img = np.array([])
 
     def get_text_characteristics(self, img: np.ndarray, bounds: np.ndarray) -> tuple:
         """
@@ -34,15 +50,16 @@ class TextCharacteristics:
         """
         ## Get the character ##
         characters = self._detect_text(img, bounds)
-        if len(characters) != 1:
-            return (None, None, None)
-        character, char_bounds = characters[0]
+        # if len(characters) != 1: ## TODO: REVERT
+        #     return (None, None, None)
+        # character, char_bounds = characters[0]
 
         ## Get the orientation ##
-        orientation = self._get_orientation(img, char_bounds)
+        # orientation = self._get_orientation(img, char_bounds)
 
         ## Get the color of the text ##
-        color = self._get_text_color(img, char_bounds)
+        # color = self._get_text_color(img, char_bounds)
+        color = self._get_text_color(img, bounds)  ## TODO: REVERT CHANGES HERE
 
         return (character, orientation, color)
 
@@ -71,7 +88,6 @@ class TextCharacteristics:
         output_image = np.dstack((processed_img, processed_img, processed_img))
 
         ## Detect Text ##
-        print("Image processing complete.")
         txt_data = pytesseract.image_to_data(
             output_image,
             output_type=pytesseract.Output.DICT,
@@ -101,7 +117,7 @@ class TextCharacteristics:
 
         return found_characters
 
-    def _get_text_color(self, img: np.ndarray, bounds: np.ndarray) -> str:
+    def _get_text_color(self, img: np.ndarray, char_bounds: np.ndarray) -> str:
         """
         Detect the color of the text.
 
@@ -109,7 +125,7 @@ class TextCharacteristics:
         ----------
         img : np.ndarray
             the image the text is in
-        bounds : np.ndarray
+        char_bounds : np.ndarray
             bounds of the text
 
         Returns
@@ -117,9 +133,68 @@ class TextCharacteristics:
         str
             the color of the text
         """
-        ## TEMP: Implemmentation out of scope of current issue
-        color = "Green"
+        CHAR_BOUNDS = [
+            [94, 42],
+            [94, 140],
+            [162, 140],
+            [162, 42],
+        ]  ## TODO: TEMP: change to function parameter
 
+        # Slice image around bounds of text ##
+        x_vals = [coord[0] for coord in CHAR_BOUNDS]
+        y_vals = [coord[1] for coord in CHAR_BOUNDS]
+        min_x = np.amin(x_vals)
+        max_x = np.amax(x_vals)
+        min_y = np.amin(y_vals)
+        max_y = np.amax(y_vals)
+
+        cropped_img = self.rotated_img[
+            min_y:max_y, min_x:max_x, :
+        ]  ## TODO: fix crop for text?
+
+        ## Image preprocessing to make text bigger/clearer ##
+        blur = cv2.medianBlur(cropped_img, ksize=9)
+
+        kernel = np.ones((5, 5), np.uint8)
+        erosion = cv2.erode(blur, kernel=kernel, iterations=1)
+        dilated = cv2.dilate(erosion, kernel=kernel, iterations=1)
+
+        cv2.imshow("Dilated text", dilated)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
+
+        ## KMeans with k=2 to seperate object and text color ##
+        kmeans_img = dilated  ## TODO: implement
+
+        ## Determine which of the 2 colors is more central ##
+        img_colors = np.unique(kmeans_img, axis=1)
+        color_1_mat = np.where(
+            kmeans_img == img_colors[0], 255, 128
+        )  ## TODO: check this
+        color_2_mat = np.where(kmeans_img == img_colors[1], 255, 128)
+
+        dimensions = np.shape(kmeans_img)
+        center_pt = (
+            int(dimensions[0] / 2),
+            int(dimensions[1] / 2),
+        )
+        color_1_mat[center_pt] = 0
+        color_2_mat[center_pt] = 0
+
+        dist_1_mat = cv2.distanceTransform(color_1_mat, cv2.DIST_L2, 3)
+        dist_1 = cv2.mean(
+            dist_1_mat, kmeans_img == img_colors[0]
+        )  ## TODO: Check if only need 1 calc for this
+        dist_2_mat = cv2.distanceTransform(color_1_mat, cv2.DIST_L2, 3)
+        dist_2 = cv2.mean(
+            dist_2_mat, kmeans_img == img_colors[1]
+        )  ## TODO: Check if only need 1 calc for this
+
+        color = min(dist_1, dist_2)
+
+        ## Match found color to color enum ##
+
+        color = "Green"
         return color
 
     def _get_orientation(self, img: np.ndarray, bounds: np.ndarray) -> str:
@@ -182,11 +257,11 @@ class TextCharacteristics:
 
         ## Rotate image ##
         rot_mat = cv2.getRotationMatrix2D(center_pt, angle, 1.0)
-        rotated_img = cv2.warpAffine(
+        self.rotated_img = cv2.warpAffine(
             cropped_img, rot_mat, cropped_img.shape[1::-1], flags=cv2.INTER_LINEAR
         )
 
-        return rotated_img
+        return self.rotated_img
 
     def _preprocess_img(self, img: np.ndarray) -> np.ndarray:
         """
