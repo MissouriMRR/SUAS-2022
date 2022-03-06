@@ -1,23 +1,28 @@
 import math
-from typing import List, Tuple
+from typing import Tuple
 
 
-def distance(a: Tuple[int], b: Tuple[int]) -> float:
-    """Calculates the euclidean distance between two points
+Point = Tuple[float, float]
+Line = Tuple[float, float, float]
 
-    Args:
-        a (Tuple[int]): x,y coordinates for point a
-        b (Tuple[int]): x,y coordinates for point b
 
-    Returns:
-        float: distance between points a and b
-    """
+def distance(a: Point, b: Point) -> float:
+    """Returns the euclidean distance between two points"""
     return abs(math.sqrt((b[0] - a[0]) ** 2 + (b[1] - a[1]) ** 2))
 
 
-# Takes a point and returns the two points that are tangent to a circle of radius r
-# src: https://math.stackexchange.com/a/3190374
-def tangent_points(point, circle, r):
+def tangent_points(point: Point, circle: Point, r: float) -> Tuple[Point, Point]:
+    """
+    From a point outside ther circle, calculates the two points that are tangent to the circle
+
+    Args:
+        point (Point): a point that lies outside the radius of the circle
+        circle (Point): center of the circle
+        r (float): radius of the circle
+
+    Returns:
+        Tuple[Point, Point]: the coordinates of each tangent to the circle
+    """
     Px = point[0]
     Py = point[1]
     Cx = circle[0]
@@ -35,18 +40,25 @@ def tangent_points(point, circle, r):
     return ((T1x, T1y), (T2x, T2y))
 
 
-# Returns the equation of a line given two points
-# src: https://stackoverflow.com/a/20679579
-def line(p1, p2):
+def line(p1: Point, p2: Point) -> Line:
+    """Returns the standard form of the equation of a line given two points"""
     A = p1[1] - p2[1]
     B = p2[0] - p1[0]
     C = p1[0] * p2[1] - p2[0] * p1[1]
     return A, B, -C
 
 
-# Finds the intersection of two lines
-# src: https://stackoverflow.com/a/20679579
-def intersection(L1, L2):
+def intersection(L1: Line, L2: Line) -> Point:
+    """
+    Finds the intersection of two lines
+
+    Args:
+        L1 (Line): equation of a line in standard form
+        L2 (Line): equation of a line in standard form
+
+    Returns:
+        Point: coordinates of the intersection
+    """
     D = L1[0] * L2[1] - L1[1] * L2[0]
     Dx = L1[2] * L2[1] - L1[1] * L2[2]
     Dy = L1[0] * L2[2] - L1[2] * L2[0]
@@ -58,8 +70,18 @@ def intersection(L1, L2):
         return False
 
 
-# Returns a circle with a center and a radius given 3 points on the edge
-def find_circle(b, c, d):
+def find_circle(b: Point, c: Point, d: Point) -> Tuple[Point, float]:
+    """
+    Finds the center and radius of a circle given three points on the circumfrence of the circle
+
+    Args:
+        b (Point): a point on the xy plane
+        c (Point): a point on the xy plane
+        d (Point): a point on the xy plane
+
+    Returns:
+        Tuple[Point, float]: the center coordinates and radius of the circle
+    """
     temp = c[0] ** 2 + c[1] ** 2
     bc = (b[0] ** 2 + b[1] ** 2 - temp) / 2
     cd = (temp - d[0] ** 2 - d[1] ** 2) / 2
@@ -77,9 +99,23 @@ def find_circle(b, c, d):
     return ((cx, cy), radius)
 
 
-# Calculates which pair of tangent points are on the same side of the circle
-# returns line segments between the start and end points and the appropriate tangents
-def resolve_closest_tangents(start, end, A1, A2, B1, B2):
+def resolve_closest_tangents(
+    start: Point, end: Point, A1: Point, A2: Point, B1: Point, B2: Point
+) -> Tuple[Line, Line, Line, Line]:
+    """
+    Calculates which pair of tangent points are on the same side of the circle
+
+    Args:
+        start (Point): starting point
+        end (Point): ending point
+        A1 (Point): tangent one of the starting point
+        A2 (Point): tangent two of the starting point
+        B1 (Point): tangent one of the ending point
+        B2 (Point): tangent two of the ending point
+
+    Returns:
+        Tuple[Line, Line, Line, Line]: Line segments from the start to the tangent to the end
+    """
     distances = [distance(A1, B1), distance(A1, B2), distance(A2, B1), distance(A2, B2)]
     i = distances.index(min(distances))
 

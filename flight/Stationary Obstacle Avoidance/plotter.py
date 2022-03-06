@@ -1,7 +1,26 @@
 import matplotlib.pyplot as plt
+from typing import List, Tuple
 
 
-def plot_data(waypoints, obstacles, padding, flight_path_color="bo-"):
+Point = Tuple[float, float]
+
+
+def plot_data(
+    waypoints: List[dict],
+    obstacles: List[dict],
+    padding: float,
+    flight_path_color: str = "ko-",
+) -> None:
+    """
+    Plots the waypoints, obstacles, and flight path between waypoints
+
+    Args:
+        waypoints (List[dict]): List of dictionaries containing waypoint data
+        obstacles (List[dict]): List of dictionaries containing obstacle data
+        padding (float): Saftey margin around obstacles
+        flight_path_color (str, optional): Color of lines indicating flight path. Defaults to black.
+    """
+
     # plot obstacles
     for obstacle in obstacles:
         x = obstacle["utm_x"]
@@ -25,21 +44,42 @@ def plot_data(waypoints, obstacles, padding, flight_path_color="bo-"):
 
 
 def plot_debug(
-    pointA,
-    pointB,
-    obstacle,
-    tangentA1,
-    tangentA2,
-    tangentB1,
-    tangentB2,
-    new_point,
-    alt_point,
-    temp_point,
-    extra_1,
-    extra_2,
-    special_case,
-    padding,
-):
+    pointA: Point,
+    pointB: Point,
+    obstacle: Point,
+    tangentA1: Point,
+    tangentA2: Point,
+    tangentB1: Point,
+    tangentB2: Point,
+    new_point: Point,
+    alt_point: Point,
+    temp_point: Point,
+    extra_1: Point,
+    extra_2: Point,
+    special_case: bool,
+    padding: float,
+) -> None:
+    """
+    Used for debugging. Plots two waypoints and the obstacle between them
+    as well as all the other points used in calculations.
+
+    Args:
+        pointA (Point): Starting point
+        pointB (Point): Ending point
+        obstacle (Point): Obstacle
+        tangentA1 (Point): First tangent to the starting point
+        tangentA2 (Point): Second tangent to the starting point
+        tangentB1 (Point): First tangent to the ending point
+        tangentB2 (Point): Second tangent to the ending point
+        new_point (Point): Intersection point on the shorter side
+        alt_point (Point): Intersection point on the longer side
+        temp_point (Point): Point that lies on the edge of the circle inline with the center and the new_point
+        extra_1 (Point): Additional point if special case is true
+        extra_2 (Point): Additional point if special case is true
+        special_case (bool): Whether or not the new point is too far from the circle edge
+        padding (float): Saftey margin around the obstacle
+    """
+
     radius = obstacle[2]
 
     # plot obstacle
@@ -93,7 +133,7 @@ def plot_debug(
         "blue",
         "blue",
     ]
-    txt = [
+    labels = [
         "Start",
         "End",
         "Obstacle",
@@ -113,7 +153,7 @@ def plot_debug(
         plt.scatter(x[i], y[i], c=col[i])
 
     # plot text labels
-    for i, v in enumerate(txt):
+    for i, v in enumerate(labels):
         plt.gca().annotate(v, (x[i], y[i]))
 
     if special_case:
