@@ -40,7 +40,7 @@ obstacles = [
     {
         "latitude": 37.949388706571064,
         "longitude": -91.78569200437985,
-        "radius": 35,
+        "radius": 30,
         "height": 200,
     },
     {
@@ -57,7 +57,7 @@ if __name__ == "__main__":
     obstacles = obstacle_avoidance.all_latlon_to_utm(obstacles)
 
     # Plot data before processing
-    # plotter.plot_data(waypoints, obstacles, SAFETY_MARGIN, flight_path_color='ko-')
+    # plotter.plot_data(waypoints, obstacles, SAFETY_MARGIN)
 
     # Find new safe path between all waypoints
     waypoints = obstacle_avoidance.get_safe_route(
@@ -65,4 +65,4 @@ if __name__ == "__main__":
     )
 
     # Plot data after processing
-    plotter.plot_data(waypoints, obstacles, SAFETY_MARGIN)
+    plotter.plot_data(waypoints, obstacles, SAFETY_MARGIN, flight_path_color="bo-")

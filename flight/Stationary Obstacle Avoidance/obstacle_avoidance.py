@@ -1,14 +1,17 @@
-from typing import List, Tuple
+from typing import Tuple
 from collections import namedtuple
 import utm
 from fractions import Fraction
-from shapely.geometry import LineString
-from shapely.geometry import Point
+from shapely import geometry
 import math_functions
 import plotter
 
 
-def latlon_to_utm(coords):
+Point = Tuple[float, float]
+
+
+def latlon_to_utm(coords: dict) -> dict:
+    """Converts latlon coordinates to utm coordinates and adds the data to the dictionary"""
     utm_coords = utm.from_latlon(coords["latitude"], coords["longitude"])
     coords["utm_x"] = utm_coords[0]
     coords["utm_y"] = utm_coords[1]
@@ -17,21 +20,35 @@ def latlon_to_utm(coords):
     return coords
 
 
-def all_latlon_to_utm(list_of_coords):
+def all_latlon_to_utm(list_of_coords: list[dict]) -> list[dict]:
+    """Converts a list of dictionarys with latlon data to add utm data"""
     for i in range(len(list_of_coords)):
         list_of_coords[i] = latlon_to_utm(list_of_coords[i])
     return list_of_coords
 
 
-def check_for_collision(p1, p2, obstacles, padding):
+def check_for_collision(
+    p1: Point, p2: Point, obstacles: list[dict], padding: float
+) -> int or None:
+    """
+    Checks if the path between two points collides with an obstacle in the given list
+
+    Args:
+        p1 (Point): Starting point
+        p2 (Point): Ending point
+        obstacles (list[dict]): List of dictionaries containing obstacle data
+        padding (float): Saftey margin around obstacle
+
+    Returns:
+        int: Index of the obstacle if a collision is found
+    """
     for i, obstacle in enumerate(obstacles):
         x = obstacle["utm_x"]
         y = obstacle["utm_y"]
         radius = obstacle["radius"]
-        line = LineString([(p1[0], p1[1]), (p2[0], p2[1])])
-        circle = (
-            Point(x, y).buffer(radius + padding).boundary
-        )  # https://stackoverflow.com/a/30998492
+        line = geometry.LineString([(p1[0], p1[1]), (p2[0], p2[1])])
+        # Creates a perfect circle shape by buffering a single point by a desired radius
+        circle = geometry.Point(x, y).buffer(radius + padding).boundary
         if circle.intersection(line):
             return i
     else:
@@ -39,8 +56,32 @@ def check_for_collision(p1, p2, obstacles, padding):
 
 
 def find_new_point(
-    pointA, pointB, obstacle, radius, padding, max_distance=0, debugging=False
-) -> tuple:
+    pointA: Point,
+    pointB: Point,
+    obstacle: Point,
+    radius: float,
+    padding: float,
+    max_distance: float = 0,
+    debugging: bool = False,
+) -> list[dict]:
+    """
+    Given a starting and ending point whose path intersects a given obstacle,
+    finds new waypoint(s) that lie outside the circle allowing causing the path to no longer intersect the obstacle
+
+    Args:
+        pointA (Point): Starting point
+        pointB (Point): Ending point
+        obstacle (Point): Obstacle that lies between the starting and ending point
+        radius (float): Radius of the obstacle
+        padding (float): Saftey margin around the obstacle
+        max_distance (float, optional): Maximum distance the new single waypoint can be away from the circle
+                                        before splitting into two new waypoints Defaults to 0.
+        debugging (bool, optional): Debugging on or off. Defaults to False.
+
+    Returns:
+        list[dict]: List of one or two waypoints
+    """
+
     # rough calculation of new height
     new_altitude = (pointA[2] + pointB[2]) / 2
 
@@ -92,7 +133,8 @@ def find_new_point(
         special_case = True
 
         print("New waypoint is too far away, splitting and adding more waypoints")
-        # https://math.stackexchange.com/a/1630886
+
+        # Equation for finding a point along a line a certain distance from another point
         t = (radius + padding) / waypoint_distance_from_circle
         temp_x = ((1 - t) * obstacle[0]) + (t * new_point[0])
         temp_y = ((1 - t) * obstacle[1]) + (t * new_point[1])
@@ -177,7 +219,28 @@ def find_new_point(
         ]
 
 
-def get_safe_route(waypoints, obstacles, padding, max_distance, debugging=False):
+def get_safe_route(
+    waypoints: list[dict],
+    obstacles: list[dict],
+    padding: float,
+    max_distance: float,
+    debugging: bool = False,
+) -> list[dict]:
+    """
+    Given a list of obstacles and a list of waypoints in which the path between some waypoints may intersect the obstacles,
+    calculates a new safe route with additional waypoints that avoids the obstacles
+
+    Args:
+        waypoints (list[dict]): List of waypoints with utm data
+        obstacles (list[dict]): List of obstacles with utm data
+        padding (float): Saftey margin around obstacles
+        max_distance (float): Maximum distance away from circle before switching from single point to two points
+        debugging (bool, optional): Debugging on or off. Defaults to False.
+
+    Returns:
+        list[dict]: Updated list of waypoints that include additional safe waypoints if needed
+    """
+
     i = 0
     num_waypoints = len(waypoints) - 1
     while i < num_waypoints:
