@@ -160,7 +160,7 @@ class TextCharacteristics:
         dilated = cv2.dilate(erosion, kernel=kernel, iterations=1)
 
         ## KMeans with k=2 to seperate object and text color ##
-        
+
         # Convert to (R, G, B, X, Y)
         vectorized = dilated.reshape((-1, 3))
         idxs = np.array([idx for idx, _ in np.ndenumerate(np.mean(dilated, axis=2))])
@@ -169,23 +169,36 @@ class TextCharacteristics:
         # Run Kmeans
         term_crit = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 10, 1.0)
         K = 2
-        _, label, center = cv2.kmeans(np.float32(vectorized), K=K, bestLabels=None, criteria=term_crit, attempts=10, flags=0)
+        _, label, center = cv2.kmeans(
+            np.float32(vectorized),
+            K=K,
+            bestLabels=None,
+            criteria=term_crit,
+            attempts=10,
+            flags=0,
+        )
         center = np.uint8(center)[:, :3]
 
         # Convert back to RGB
         kmeans_img = center[label.flatten()]
         kmeans_img = kmeans_img.reshape((dilated.shape))
 
-        cv2.imshow("Kmeans Img", kmeans_img)
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
-
         ## Determine which of the 2 colors is more central ##
-        img_colors = np.unique(kmeans_img, axis=1)
-        color_1_mat = np.where(
-            kmeans_img == img_colors[0], 255, 128
-        )  ## TODO: check this
-        color_2_mat = np.where(kmeans_img == img_colors[1], 255, 128)
+        img_colors = np.unique(kmeans_img.reshape(-1, kmeans_img.shape[2]), axis=0)
+
+        # Mask of Color 1
+        color_1_r = np.where(kmeans_img[:, :, 0] == img_colors[0][0], 1, 0)
+        color_1_g = np.where(kmeans_img[:, :, 1] == img_colors[0][1], 1, 0)
+        color_1_b = np.where(kmeans_img[:, :, 2] == img_colors[0][2], 1, 0)
+        color_1_mat = np.bitwise_and(color_1_r, color_1_g, color_1_b)
+        color_1_mat = np.where(color_1_mat == 1, 255, 128).astype(np.uint8)
+
+        # Mask of Color 2
+        color_2_r = np.where(kmeans_img[:, :, 0] == img_colors[1][0], 1, 0)
+        color_2_g = np.where(kmeans_img[:, :, 1] == img_colors[1][1], 1, 0)
+        color_2_b = np.where(kmeans_img[:, :, 2] == img_colors[1][2], 1, 0)
+        color_2_mat = np.bitwise_and(color_2_r, color_2_g, color_2_b)
+        color_2_mat = np.where(color_2_mat == 1, 255, 128).astype(np.uint8)
 
         dimensions = np.shape(kmeans_img)
         center_pt = (
