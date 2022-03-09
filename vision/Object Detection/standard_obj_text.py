@@ -159,12 +159,26 @@ class TextCharacteristics:
         erosion = cv2.erode(blur, kernel=kernel, iterations=1)
         dilated = cv2.dilate(erosion, kernel=kernel, iterations=1)
 
-        cv2.imshow("Dilated text", dilated)
+        ## KMeans with k=2 to seperate object and text color ##
+        
+        # Convert to (R, G, B, X, Y)
+        vectorized = dilated.reshape((-1, 3))
+        idxs = np.array([idx for idx, _ in np.ndenumerate(np.mean(dilated, axis=2))])
+        vectorized = np.hstack((vectorized, idxs))
+
+        # Run Kmeans
+        term_crit = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 10, 1.0)
+        K = 2
+        _, label, center = cv2.kmeans(np.float32(vectorized), K=K, bestLabels=None, criteria=term_crit, attempts=10, flags=0)
+        center = np.uint8(center)[:, :3]
+
+        # Convert back to RGB
+        kmeans_img = center[label.flatten()]
+        kmeans_img = kmeans_img.reshape((dilated.shape))
+
+        cv2.imshow("Kmeans Img", kmeans_img)
         cv2.waitKey(0)
         cv2.destroyAllWindows()
-
-        ## KMeans with k=2 to seperate object and text color ##
-        kmeans_img = dilated  ## TODO: implement
 
         ## Determine which of the 2 colors is more central ##
         img_colors = np.unique(kmeans_img, axis=1)
