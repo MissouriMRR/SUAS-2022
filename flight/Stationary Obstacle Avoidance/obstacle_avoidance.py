@@ -11,7 +11,15 @@ Point = Tuple[float, float]
 
 
 def latlon_to_utm(coords: dict) -> dict:
-    """Converts latlon coordinates to utm coordinates and adds the data to the dictionary"""
+    """
+    Converts latlon coordinates to utm coordinates and adds the data to the dictionary
+
+    Args:
+        coords (dict): A dictionary containing lat long coordinates
+
+    Returns:
+        dict: An updated dictionary with additional keys and values with utm data
+    """
     utm_coords = utm.from_latlon(coords["latitude"], coords["longitude"])
     coords["utm_x"] = utm_coords[0]
     coords["utm_y"] = utm_coords[1]
@@ -21,7 +29,15 @@ def latlon_to_utm(coords: dict) -> dict:
 
 
 def all_latlon_to_utm(list_of_coords: list[dict]) -> list[dict]:
-    """Converts a list of dictionarys with latlon data to add utm data"""
+    """
+    Converts a list of dictionarys with latlon data to add utm data
+
+    Args:
+        list_of_coords (list[dict]): A list of dictionaries that contain lat long data
+
+    Returns:
+        list[dict]: An updated list of dictionaries with added utm data
+    """
     for i in range(len(list_of_coords)):
         list_of_coords[i] = latlon_to_utm(list_of_coords[i])
     return list_of_coords
