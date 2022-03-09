@@ -190,34 +190,27 @@ class TextCharacteristics:
         color_1_r = np.where(kmeans_img[:, :, 0] == img_colors[0][0], 1, 0)
         color_1_g = np.where(kmeans_img[:, :, 1] == img_colors[0][1], 1, 0)
         color_1_b = np.where(kmeans_img[:, :, 2] == img_colors[0][2], 1, 0)
-        color_1_mat = np.bitwise_and(color_1_r, color_1_g, color_1_b)
-        color_1_mat = np.where(color_1_mat == 1, 255, 128).astype(np.uint8)
+        color_1_mat = np.bitwise_and(color_1_r, color_1_g, color_1_b).astype(np.uint8)
+        color_1_adj_mat = np.where(color_1_mat == 1, 255, 128).astype(np.uint8)
 
         # Mask of Color 2
-        color_2_r = np.where(kmeans_img[:, :, 0] == img_colors[1][0], 1, 0)
-        color_2_g = np.where(kmeans_img[:, :, 1] == img_colors[1][1], 1, 0)
-        color_2_b = np.where(kmeans_img[:, :, 2] == img_colors[1][2], 1, 0)
-        color_2_mat = np.bitwise_and(color_2_r, color_2_g, color_2_b)
-        color_2_mat = np.where(color_2_mat == 1, 255, 128).astype(np.uint8)
+        color_2_mat = np.where(color_1_mat == 1, 0, 1).astype(np.uint8)
 
-        dimensions = np.shape(kmeans_img)
+        # Set middle pixel to 0
+        dimensions = np.shape(color_1_adj_mat)
         center_pt = (
             int(dimensions[0] / 2),
             int(dimensions[1] / 2),
         )
-        color_1_mat[center_pt] = 0
-        color_2_mat[center_pt] = 0
+        color_1_adj_mat[center_pt] = 0
 
-        dist_1_mat = cv2.distanceTransform(color_1_mat, cv2.DIST_L2, 3)
-        dist_1 = cv2.mean(
-            dist_1_mat, kmeans_img == img_colors[0]
-        )  ## TODO: Check if only need 1 calc for this
-        dist_2_mat = cv2.distanceTransform(color_1_mat, cv2.DIST_L2, 3)
-        dist_2 = cv2.mean(
-            dist_2_mat, kmeans_img == img_colors[1]
-        )  ## TODO: Check if only need 1 calc for this
+        distance_mat = cv2.distanceTransform(color_1_adj_mat, cv2.DIST_L2, 3)
 
-        color = min(dist_1, dist_2)
+        dist_1 = cv2.mean(distance_mat, color_1_mat)[0]
+        dist_2 = cv2.mean(distance_mat, color_2_mat)[0]
+
+        # Color of text is closest to the center
+        color = img_colors[0] if min(dist_1, dist_2) == dist_1 else img_colors[1]
 
         ## Match found color to color enum ##
 
