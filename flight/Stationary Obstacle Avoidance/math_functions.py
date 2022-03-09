@@ -7,7 +7,16 @@ Line = Tuple[float, float, float]
 
 
 def distance(a: Point, b: Point) -> float:
-    """Returns the euclidean distance between two points"""
+    """
+    Calculates the euclidean distance between two points
+
+    Args:
+        a (Point): First point
+        b (Point): Second point
+
+    Returns:
+        float: Returns the distance between points a and b
+    """
     return abs(math.sqrt((b[0] - a[0]) ** 2 + (b[1] - a[1]) ** 2))
 
 
@@ -41,7 +50,16 @@ def tangent_points(point: Point, circle: Point, r: float) -> Tuple[Point, Point]
 
 
 def line(p1: Point, p2: Point) -> Line:
-    """Returns the standard form of the equation of a line given two points"""
+    """
+    Finds the standard form of the equation of a line given two points
+
+    Args:
+        p1 (Point): First pair of x,y coordinates
+        p2 (Point): Second pair of x,y coordinates
+
+    Returns:
+        Line: The real numbers A, B and -C which make up the standard line equation
+    """
     A = p1[1] - p2[1]
     B = p2[0] - p1[0]
     C = p1[0] * p2[1] - p2[0] * p1[1]
@@ -68,35 +86,6 @@ def intersection(L1: Line, L2: Line) -> Point:
         return x, y
     else:
         return False
-
-
-def find_circle(b: Point, c: Point, d: Point) -> Tuple[Point, float]:
-    """
-    Finds the center and radius of a circle given three points on the circumfrence of the circle
-
-    Args:
-        b (Point): a point on the xy plane
-        c (Point): a point on the xy plane
-        d (Point): a point on the xy plane
-
-    Returns:
-        Tuple[Point, float]: the center coordinates and radius of the circle
-    """
-    temp = c[0] ** 2 + c[1] ** 2
-    bc = (b[0] ** 2 + b[1] ** 2 - temp) / 2
-    cd = (temp - d[0] ** 2 - d[1] ** 2) / 2
-    det = (b[0] - c[0]) * (c[1] - d[1]) - (c[0] - d[0]) * (b[1] - c[1])
-
-    if abs(det) < 1.0e-10:
-        return None
-
-    # Center of circle
-    cx = (bc * (c[1] - d[1]) - cd * (b[1] - c[1])) / det
-    cy = ((b[0] - c[0]) * cd - (c[0] - d[0]) * bc) / det
-
-    radius = ((cx - b[0]) ** 2 + (cy - b[1]) ** 2) ** 0.5
-
-    return ((cx, cy), radius)
 
 
 def resolve_closest_tangents(
