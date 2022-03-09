@@ -7,8 +7,8 @@ from states.takeoff import Takeoff
 from states.waypoints import Waypoints
 from states.land import Land
 from states.final_state import Final
-STATES: Dict[str, State]
-STATES = {
+
+STATES: Dict[str, State] = {
     "Start State": Start,
     "Pre-Processing": PreProcess,
     "Takeoff": Takeoff,

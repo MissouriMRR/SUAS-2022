@@ -1,8 +1,8 @@
 """Class to contain setters and getters for settings in various flight states"""
 
-DEFAULT_WAYPOINTS: int = 14
-DEFAULT_RUN_TITLE: str = "N/A"
-DEFAULT_RUN_DESCRIPTION: str = "N/A"
+DEFAULT_WAYPOINTS: int = 14             # Total number of waypoints flown to in Auto. flight of SUAS2022
+DEFAULT_RUN_TITLE: str = "N/A"          # Title of flight mission for logging
+DEFAULT_RUN_DESCRIPTION: str = "N/A"    # Description of current flight mission for logging
 
 
 class StateSettings:
@@ -10,43 +10,112 @@ class StateSettings:
     Initialize settings for state machine
     Functions:
         __init__: Sets preliminary values for SUAS overheads
-        enable_simple_takeoff() -> None: Sets if takeoff procedure should be simple for testing
-        set_number_waypoints() -> None: Sets the number of waypoints in flight plan
-        set_run_title() -> None: Sets name of competition
-        set_run_description() -> None: Sets description for competition
+        simple_takeoff() -> None: Enables access to status of simple_takeoff
+                         -> bool: Setter to determine if testing takeoff procedure desired
+        num_waypoints() -> None: Enables access to number of waypoints in the competition
+                        -> int: Sets the number of waypoints in the competition
+        run_title() -> None: Enables access to set name of the current flight
+                    -> str: Sets the name of the current flight for logging
+        run_description() -> None: Enables access to description of current flight mission
+                          -> str: Sets the description of current flight mission
     Member Variables:
-        num_waypoints: Number of waypoints on flight plan
-        run_title: Title of Competition
-        run_description: Description for Competition
+        __num_waypoints: Number of waypoints on flight plan
+        __run_title: Title of Competition
+        __run_description: Description for Competition
     """
-    def __init__(self):
-        """Default constructor results in default settings"""
-        self.simple_takeoff = False
-        self.num_waypoints = DEFAULT_WAYPOINTS
-        self.run_title = DEFAULT_RUN_TITLE
-        self.run_description = DEFAULT_RUN_DESCRIPTION
+    def __init__(self, takeoff_bool: bool = False, num_waypoints: int = DEFAULT_WAYPOINTS,
+                 title: str = DEFAULT_RUN_TITLE, description: str = DEFAULT_RUN_DESCRIPTION):
+        """Default constructor results in default settings
+        Args:
+            takeoff_bool: bool - determines if a simple takeoff procedure should be executed for testing
+            num_waypoints: int - Number of waypoints, extracted from SUAS mission plan
+            title: str - Title of current flight mission, for logging purposes
+            description: str - Description of current flight mission, for logging purposes
+        """
+        self.__simple_takeoff = takeoff_bool
+        self.__num_waypoints = num_waypoints
+        self.__run_title = title
+        self.__run_description = description
 
     # ---- Takeoff settings ---- #
+    @property
+    def simple_takeoff(self) -> bool:
+        """Establishes simple_takeoff as a private member variable
+        Args:
+            N/A
+        Returns:
+            bool: Status of simple_takeoff variable
+        """
+        return self.__simple_takeoff
 
-    def enable_simple_takeoff(self, simple_takeoff: bool) -> None:
+    @simple_takeoff.setter
+    def simple_takeoff(self, simple_takeoff: bool) -> None:
+        """Setter for whether to perform simple takeoff instead of regular takeoff
+        Args:
+            simple_takeoff: bool - True for drone to go straight up, False to behave normally
+        Returns:
+            None
         """
-        Setter for whether to perform simple takeoff instead of regular takeoff
-            simple_takeoff(bool): True for drone to go straight up, False to behave normally
-        """
-        self.simple_takeoff = simple_takeoff
+        self.__simple_takeoff = simple_takeoff
 
     # ---- Waypoint Settings ---- #
+    @property
+    def num_waypoints(self) -> int:
+        """Establishes num_waypoints as private member variable
+        Args:
+            N/A
+        Returns:
+            int: Number of waypoints in the competition
+        """
+        return self.__num_waypoints
 
-    def set_number_waypoints(self, waypoints: int) -> None:
-        """Set the number of waypoints given by Interop System"""
-        self.num_waypoints = waypoints
+    @num_waypoints.setter
+    def num_waypoints(self, waypoints: int) -> None:
+        """Set the number of waypoints given by Interop System
+        Args:
+            waypoints: int - Number of waypoints present in mission plan
+        Returns:
+            None
+        """
+        self.__num_waypoints = waypoints
 
     # ---- Other settings ---- #
+    @property
+    def run_title(self) -> str:
+        """Set a title for the run/test to be output in logging
+        Args:
+            N/A
+        Returns:
+            str: Created title for flight mission
+        """
+        return self.__run_title
 
-    def set_run_title(self, title: str) -> None:
-        """Set a title for the run/test to be output in logging"""
-        self.run_title = title
+    @run_title.setter
+    def run_title(self, title: str) -> None:
+        """Sets the title of the flight mission for logging
+        Args:
+            title: str - Desired title for the flight
+        Returns:
+            None
+        """
+        self.__run_title = title
 
-    def set_run_description(self, description: str) -> None:
-        """Set a description for the run/test to be output in logging"""
-        self.run_description = description
+    @property
+    def run_description(self) -> str:
+        """Set a description for the run/test to be output in logging
+        Args:
+            N/A
+        Returns:
+            str: Desired description for flight mission
+        """
+        return self.__run_description
+
+    @run_description.setter
+    def run_description(self, description: str) -> None:
+        """Sets a description of the flight mission
+        Args:
+            description: str - Written description for flight mission for logs
+        Returns:
+            None
+        """
+        self.__run_description = description
