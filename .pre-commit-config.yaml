@@ -56,7 +56,7 @@ repos:
         types: [python]
         args:
           [
-                "-rn", # only display messages
-                "-sn", # don't display the score
+                # "-rn", # only display messages
+                # "-sn", # don't display the score
                 "--rcfile=.pylintrc", # link to config file
           ]
