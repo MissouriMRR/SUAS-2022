@@ -232,6 +232,7 @@ class TextCharacteristics:
 
         ## Match found color to color enum ##
         color = self._parse_color(color_val)
+        print(color)
 
         return color
 
@@ -350,27 +351,45 @@ class TextCharacteristics:
         """
         # Possible colors and HSV upper/lower bounds
         colors = {
-            "WHITE": [[180, 18, 255], [0, 0, 231]],
-            "BLACK": [[180, 255, 30], [0, 0, 0]],
-            "GRAY": [[180, 18, 230], [0, 0, 40]],
-            "RED": [[180, 255, 255], [159, 50, 70], [9, 255, 255], [0, 50, 70]],
-            "BLUE": [[128, 255, 255], [90, 50, 70]],
-            "GREEN": [[89, 255, 255], [36, 50, 70]],
-            "YELLOW": [[35, 255, 255], [25, 50, 70]],
-            "PURPLE": [[158, 255, 255], [129, 50, 70]],
-            "BROWN": [[20, 255, 180], [10, 100, 120]],
-            "ORANGE": [[24, 255, 255], [10, 50, 70]],
+            "WHITE": np.array([[180, 18, 255], [0, 0, 231]]),
+            "BLACK": np.array([[180, 255, 30], [0, 0, 0]]),
+            "GRAY": np.array([[180, 18, 230], [0, 0, 40]]),
+            "RED": np.array(
+                [[180, 255, 255], [159, 50, 70], [9, 255, 255], [0, 50, 70]]
+            ),
+            "BLUE": np.array([[128, 255, 255], [90, 50, 70]]),
+            "GREEN": np.array([[89, 255, 255], [36, 50, 70]]),
+            "YELLOW": np.array([[35, 255, 255], [25, 50, 70]]),
+            "PURPLE": np.array([[158, 255, 255], [129, 50, 70]]),
+            "BROWN": np.array([[20, 255, 180], [10, 100, 120]]),
+            "ORANGE": np.array([[24, 255, 255], [10, 50, 70]]),
         }
 
         ## Convert color to HSV
         frame = np.reshape(color_val, (1, 1, 3))  # store as single-pixel image
-        hsv_color_val = cv2.cvtColor(frame, cv2.COLOR_RGB2HSV_FULL)[0, 0]
+        hsv_color_val = cv2.cvtColor(frame, cv2.COLOR_RGB2HSV_FULL)
 
         ## Determine which ranges color falls in ##
+        matched = []
+        for c, ranges in colors.items():
+            if len(ranges) > 2:  # red has 2 ranges
+                if (cv2.inRange(hsv_color_val, ranges[1], ranges[0])[0, 0] == 255) or (
+                    cv2.inRange(hsv_color_val, ranges[3], ranges[2])[0, 0] == 255
+                ):
+                    matched.append(c)
+            elif cv2.inRange(hsv_color_val, ranges[1], ranges[0])[0, 0] == 255:
+                matched.append(c)
 
         ## Determine distance to center to choose color if falls in multiple ##
+        color = ""
+        if len(matched) == 0:  # no matched color
+            pass
+        elif len(matched) > 1:  # 2+ matched colors
+            pass
+        else:  # single matched color
+            color = matched[0]
 
-        return hsv_color_val
+        return color
 
     def _get_orientation(self, img: np.ndarray, bounds: np.ndarray) -> str:
         """
