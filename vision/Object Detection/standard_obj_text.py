@@ -340,7 +340,12 @@ class TextCharacteristics:
 
         ## Color of text is closest to the center ##
         color = img_colors[0] if min(dist_1, dist_2) == dist_1 else img_colors[1]
-        ## TODO: IS THIS RGB OR BGR????
+
+        # Switch from BGR to RGB, thanks OpenCV
+        t = color[0]
+        color[0] = color[2]
+        color[2] = t
+
         return color
 
     def _get_orientation(self, img: np.ndarray, bounds: np.ndarray) -> str:
