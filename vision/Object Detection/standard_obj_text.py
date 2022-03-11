@@ -236,12 +236,35 @@ class TextCharacteristics:
         min_y = np.amin(y_vals)
         max_y = np.amax(y_vals)
 
-        cropped_img = self.rotated_img[
-            min_y:max_y, min_x:max_x, :
-        ]  ## TODO: fix crop for text?
+        cropped_img = self.rotated_img[min_y:max_y, min_x:max_x, :]
 
+        ## Run Kmeans with K=2 ##
+        kmeans_img = self._run_kmeans(cropped_img)
+
+        ## Determine which of the 2 colors is more central ##
+        color_val = self._get_color_value(kmeans_img)
+
+        ## Match found color to color enum ##
+
+        color = "Green"
+        return color
+
+    def _run_kmeans(self, img: np.ndarray) -> np.ndarray:
+        """
+        Run kmeans with k=2 for color classification.
+
+        Parameters
+        ----------
+        img : np.ndarray
+            image to run kmeans on
+
+        Returns
+        -------
+        np.ndarray
+            image after preprocessing and kmeans
+        """
         ## Image preprocessing to make text bigger/clearer ##
-        blur = cv2.medianBlur(cropped_img, ksize=9)
+        blur = cv2.medianBlur(img, ksize=9)
 
         kernel = np.ones((5, 5), np.uint8)
         erosion = cv2.erode(blur, kernel=kernel, iterations=1)
@@ -271,7 +294,24 @@ class TextCharacteristics:
         kmeans_img = center[label.flatten()]
         kmeans_img = kmeans_img.reshape((dilated.shape))
 
-        ## Determine which of the 2 colors is more central ##
+        return kmeans_img
+
+    def _get_color_value(self, kmeans_img: np.ndarray) -> np.ndarray:
+        """
+        Get the RGB value of the text color.
+
+        Parameters
+        ----------
+        img: np.ndarray
+            the kmeans image containing the text
+
+        Returns
+        -------
+        np.ndarray
+            the color of the text
+        """
+        ## TODO: Switch to member variables over parameters
+        ## Find the two colors in the image ##
         img_colors = np.unique(kmeans_img.reshape(-1, kmeans_img.shape[2]), axis=0)
 
         # Mask of Color 1
@@ -284,6 +324,7 @@ class TextCharacteristics:
         # Mask of Color 2
         color_2_mat = np.where(color_1_mat == 1, 0, 1).astype(np.uint8)
 
+        ## Calculate the mean distance of colors to center ##
         # Set middle pixel to 0
         dimensions = np.shape(color_1_adj_mat)
         center_pt = (
@@ -297,12 +338,9 @@ class TextCharacteristics:
         dist_1 = cv2.mean(distance_mat, color_1_mat)[0]
         dist_2 = cv2.mean(distance_mat, color_2_mat)[0]
 
-        # Color of text is closest to the center
+        ## Color of text is closest to the center ##
         color = img_colors[0] if min(dist_1, dist_2) == dist_1 else img_colors[1]
-
-        ## Match found color to color enum ##
-
-        color = "Green"
+        ## TODO: IS THIS RGB OR BGR????
         return color
 
     def _get_orientation(self, img: np.ndarray, bounds: np.ndarray) -> str:
