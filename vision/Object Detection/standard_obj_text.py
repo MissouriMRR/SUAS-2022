@@ -382,10 +382,28 @@ class TextCharacteristics:
 
         ## Determine distance to center to choose color if falls in multiple ##
         color = ""
-        if len(matched) == 0:  # no matched color
+        if len(matched) == 0:  # no matched color ## TODO: what to do here?
             pass
         elif len(matched) > 1:  # 2+ matched colors
-            pass
+            # find color with min dist to color value
+            matched_dists = np.array([0 for _ in matched])
+            for i, c in enumerate(matched):
+                # get midpoint value of color range
+                d = 0
+                if len(colors[c]) > 2:  # handle red's 2 ranges
+                    mid1 = np.mean(colors[c][:2])
+                    mid2 = np.mean(colors[c][2:])
+                    d = min(
+                        np.sum(np.abs(hsv_color_val - mid1)),
+                        np.sum(np.abs(hsv_color_val - mid2)),
+                    )
+                else:
+                    mid = np.mean(colors[c])
+                    d = np.sum(np.abs(hsv_color_val - mid))
+                matched_dists[i] = d
+
+            # color with min distance is the color chosen
+            color = colors[matched_dists[np.argmin(matched_dists)]]
         else:  # single matched color
             color = matched[0]
 
