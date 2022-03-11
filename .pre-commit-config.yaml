@@ -10,10 +10,12 @@ repos:
     -   id: trailing-whitespace
     -   id: check-added-large-files
     -   id: check-merge-conflict
+    -   id: check-case-conflict
     -   id: end-of-file-fixer
     -   id: check-json
     -   id: check-xml
     -   id: check-yaml
+    -   id: check-toml
     -   id: mixed-line-ending
         args: ['--fix=lf']
         description: Forces line endings to the UNIX LF character

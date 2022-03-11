@@ -3,7 +3,7 @@ name = "suas-2022"
 version = "0.1.0"
 description = ""
 authors = []
-license = ""
+license = "MIT"
 
 [tool.poetry.dependencies]
 python = "^3.8"
@@ -16,6 +16,7 @@ lxml = "^4.8.0"
 colorlog = "^6.6.0"
 pyproj = "^3.3.0"
 pyusb = "^1.2.1"
+mypy = "^0.931"
 
 [tool.poetry.dev-dependencies]
 black = "^21.12b0"
