@@ -117,6 +117,92 @@ class TextCharacteristics:
 
         return found_characters
 
+    def _preprocess_img(self, img: np.ndarray) -> np.ndarray:
+        """
+        Preprocess image for text detection.
+
+        Parameters
+        ----------
+        img : np.ndarray
+            image to preprocess
+
+        Returns
+        -------
+        np.ndarray
+            the image after preprocessing
+        """
+        # grayscale
+        gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+
+        # blur to remove noise
+        blur = cv2.medianBlur(gray, ksize=9)
+
+        # erode and dilate to increase text clarity and reduce noise
+        kernel = np.ones((5, 5), np.uint8)
+        eroded = cv2.erode(blur, kernel=kernel, iterations=1)
+        dilated = cv2.dilate(eroded, kernel=kernel, iterations=1)
+
+        # laplace edge detection
+        laplace_img = cv2.Laplacian(dilated, ddepth=cv2.CV_8U, ksize=5)
+
+        # binarize image
+        binarized = np.where(laplace_img > 50, np.uint8(255), np.uint8(0))
+
+        # additional blur to remove noise
+        blur_2 = cv2.medianBlur(binarized, ksize=3)
+
+        return blur_2
+
+    def _slice_rotate_img(self, img: np.ndarray, bounds: np.ndarray) -> np.ndarray:
+        """
+        Slice a portion of an image and rotate to be rectangular.
+
+        Parameters
+        ----------
+        img : np.ndarray
+            the image to take a splice of
+        bounds : np.ndarray
+            array of tuple bounds (4 x-y coordinates; tl-tr-br-bl)
+
+        Returns
+        -------
+        np.ndarray
+            the spliced/rotated images
+        """
+        ## Slice image around bounds and find center point ##
+        x_vals = [coord[0] for coord in bounds]
+        y_vals = [coord[1] for coord in bounds]
+        min_x = np.amin(x_vals)
+        max_x = np.amax(x_vals)
+        min_y = np.amin(y_vals)
+        max_y = np.amax(y_vals)
+
+        cropped_img = img[min_x:max_x][min_y:max_y][:]
+
+        dimensions = np.shape(cropped_img)
+        center_pt = (
+            int(dimensions[0] / 2),
+            int(
+                dimensions[1] / 2,
+            ),
+        )
+
+        ## Get angle of rotation ##
+        ## TODO: 1st index depends on how bounds stored for standard object
+        tl_x = bounds[0][0]
+        tr_x = bounds[3][0]
+        tl_y = bounds[0][1]
+        tr_y = bounds[3][1]
+        angle = np.rad2deg(np.arctan((tr_y - tl_y) / (tr_x - tl_x)))
+
+        ## Rotate image ##
+        rot_mat = cv2.getRotationMatrix2D(center_pt, angle, 1.0)
+        self.rotated_img = cv2.warpAffine(
+            cropped_img, rot_mat, cropped_img.shape[1::-1], flags=cv2.INTER_LINEAR
+        )
+
+        return self.rotated_img
+
     def _get_text_color(self, img: np.ndarray, char_bounds: np.ndarray) -> str:
         """
         Detect the color of the text.
@@ -140,6 +226,8 @@ class TextCharacteristics:
             [162, 42],
         ]  ## TODO: TEMP: change to function parameter
 
+        ## TODO: Split into multiple functions
+
         # Slice image around bounds of text ##
         x_vals = [coord[0] for coord in CHAR_BOUNDS]
         y_vals = [coord[1] for coord in CHAR_BOUNDS]
@@ -159,14 +247,14 @@ class TextCharacteristics:
         erosion = cv2.erode(blur, kernel=kernel, iterations=1)
         dilated = cv2.dilate(erosion, kernel=kernel, iterations=1)
 
-        ## KMeans with k=2 to seperate object and text color ##
+        ## Color and Location-based KMeans clustering ##
 
         # Convert to (R, G, B, X, Y)
         vectorized = dilated.reshape((-1, 3))
         idxs = np.array([idx for idx, _ in np.ndenumerate(np.mean(dilated, axis=2))])
         vectorized = np.hstack((vectorized, idxs))
 
-        # Run Kmeans
+        # Run Kmeans with K=2
         term_crit = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 10, 1.0)
         K = 2
         _, label, center = cv2.kmeans(
@@ -232,92 +320,6 @@ class TextCharacteristics:
         orientation = "N"
 
         return orientation
-
-    def _slice_rotate_img(self, img: np.ndarray, bounds: np.ndarray) -> np.ndarray:
-        """
-        Slice a portion of an image and rotate to be rectangular.
-
-        Parameters
-        ----------
-        img : np.ndarray
-            the image to take a splice of
-        bounds : np.ndarray
-            array of tuple bounds (4 x-y coordinates; tl-tr-br-bl)
-
-        Returns
-        -------
-        np.ndarray
-            the spliced/rotated images
-        """
-        ## Slice image around bounds and find center point ##
-        x_vals = [coord[0] for coord in bounds]
-        y_vals = [coord[1] for coord in bounds]
-        min_x = np.amin(x_vals)
-        max_x = np.amax(x_vals)
-        min_y = np.amin(y_vals)
-        max_y = np.amax(y_vals)
-
-        cropped_img = img[min_x:max_x][min_y:max_y][:]
-
-        dimensions = np.shape(cropped_img)
-        center_pt = (
-            int(dimensions[0] / 2),
-            int(
-                dimensions[1] / 2,
-            ),
-        )
-
-        ## Get angle of rotation ##
-        ## TODO: 1st index depends on how bounds stored for standard object
-        tl_x = bounds[0][0]
-        tr_x = bounds[3][0]
-        tl_y = bounds[0][1]
-        tr_y = bounds[3][1]
-        angle = np.rad2deg(np.arctan((tr_y - tl_y) / (tr_x - tl_x)))
-
-        ## Rotate image ##
-        rot_mat = cv2.getRotationMatrix2D(center_pt, angle, 1.0)
-        self.rotated_img = cv2.warpAffine(
-            cropped_img, rot_mat, cropped_img.shape[1::-1], flags=cv2.INTER_LINEAR
-        )
-
-        return self.rotated_img
-
-    def _preprocess_img(self, img: np.ndarray) -> np.ndarray:
-        """
-        Preprocess image for text detection.
-
-        Parameters
-        ----------
-        img : np.ndarray
-            image to preprocess
-
-        Returns
-        -------
-        np.ndarray
-            the image after preprocessing
-        """
-        # grayscale
-        gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
-
-        # blur to remove noise
-        blur = cv2.medianBlur(gray, ksize=9)
-
-        # erode and dilate to increase text clarity and reduce noise
-        kernel = np.ones((5, 5), np.uint8)
-        eroded = cv2.erode(blur, kernel=kernel, iterations=1)
-        dilated = cv2.dilate(eroded, kernel=kernel, iterations=1)
-
-        # laplace edge detection
-        laplace_img = cv2.Laplacian(dilated, ddepth=cv2.CV_8U, ksize=5)
-
-        # binarize image
-        binarized = np.where(laplace_img > 50, np.uint8(255), np.uint8(0))
-
-        # additional blur to remove noise
-        blur_2 = cv2.medianBlur(binarized, ksize=3)
-
-        return blur_2
 
 
 if __name__ == "__main__":
