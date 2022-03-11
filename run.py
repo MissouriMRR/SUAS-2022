@@ -1,1 +1,11 @@
-this_is_a_really_useful_variable_name = tuple(list(tuple(list(tuple(list([1,2,3]))))))# bad code was written on this day on this time on this year
+#!/usr/bin/env python3
+"""Main initial runnable file for the codebase"""
+
+import logging
+
+if __name__ == "__main__":
+    # Run system (multiprocessing) manager
+    try:
+        pass
+    except:  # pylint: disable=bare-except
+        logging.exception("Error in running system manager")
