@@ -30,7 +30,6 @@ repos:
             --namespace-packages,
             --ignore-missing-imports,
             --disallow-any-generics,
-            --disallow-any-explicit,
             --disallow-untyped-calls,
             --disallow-untyped-defs,
             --disallow-incomplete-defs,
