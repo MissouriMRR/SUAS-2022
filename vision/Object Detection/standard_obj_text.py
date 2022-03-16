@@ -248,7 +248,7 @@ class TextCharacteristics:
         self._run_kmeans()
 
         ## Determine which of the 2 colors is more central ##
-        color_val = self._get_color_value()
+        color_val = self._get_color_value()  ## NOTE: val is in BGR due to kmeans return
 
         ## Match found color to color enum ##
         color = self._parse_color(color_val)
@@ -291,13 +291,13 @@ class TextCharacteristics:
         )
         center = np.uint8(center)[:, :3]
 
-        # Convert back to RGB
+        # Convert back to BGR
         self.kmeans_img = center[label.flatten()]
         self.kmeans_img = self.kmeans_img.reshape((dilated.shape))
 
     def _get_color_value(self) -> np.ndarray:
         """
-        Get the RGB value of the text color.
+        Get the BGR value of the text color.
 
         Returns
         -------
@@ -328,18 +328,15 @@ class TextCharacteristics:
         )
         color_1_adj_mat[center_pt] = 0
 
+        # calculate distance of each pixel to center pixel
         distance_mat = cv2.distanceTransform(color_1_adj_mat, cv2.DIST_L2, 3)
 
+        # average distance for each color
         dist_1 = cv2.mean(distance_mat, color_1_mat)[0]
         dist_2 = cv2.mean(distance_mat, color_2_mat)[0]
 
         ## Color of text is closest to the center ##
         color = img_colors[0] if min(dist_1, dist_2) == dist_1 else img_colors[1]
-
-        # Switch from BGR to RGB, thanks OpenCV
-        t = color[0]
-        color[0] = color[2]
-        color[2] = t
 
         return color
 
@@ -359,7 +356,7 @@ class TextCharacteristics:
         """
         ## Convert color to HSV
         frame = np.reshape(color_val, (1, 1, 3))  # store as single-pixel image
-        hsv_color_val = cv2.cvtColor(frame, cv2.COLOR_RGB2HSV_FULL)
+        hsv_color_val = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV_FULL)
 
         ## Determine which ranges color falls in ##
         matched = []  # colors matched to the text
