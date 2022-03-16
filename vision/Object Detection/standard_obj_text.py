@@ -34,11 +34,11 @@ class TextCharacteristics:
 
     def __init__(self):
         # related to text detection
-        self.rotated_img = np.array([])
+        self.rotated_img: np.ndarray = np.array([])
 
         # related to text color
-        self.text_cropped_img = np.array([])
-        self.kmeans = np.array([])
+        self.text_cropped_img: np.ndarray = np.array([])
+        self.kmeans: np.ndarray = np.array([])
 
     def get_text_characteristics(self, img: np.ndarray, bounds: np.ndarray) -> tuple:
         """
@@ -57,16 +57,16 @@ class TextCharacteristics:
             characteristics of the text in the form (character, orientation, color)
         """
         ## Get the character ##
-        characters = self._detect_text(img, bounds)
+        characters: list = self._detect_text(img, bounds)
         if len(characters) != 1:
             return (None, None, None)
         character, char_bounds = characters[0]
 
         ## Get the orientation ##
-        orientation = self._get_orientation(img, char_bounds)
+        orientation: str = self._get_orientation(img, char_bounds)
 
         ## Get the color of the text ##
-        color = self._get_text_color(img, char_bounds)
+        color: str = self._get_text_color(img, char_bounds)
 
         return (character, orientation, color)
 
@@ -88,11 +88,13 @@ class TextCharacteristics:
             list containing detected characters and their bounds, Format of characters is ([bounds], 'character').
         """
         ## Crop and rotate the image ##
-        rotated_img = self._slice_rotate_img(img, bounds)
+        self._slice_rotate_img(img, bounds)
 
         ## Image preprocessing to make text more clear ##
-        processed_img = self._preprocess_img(rotated_img)
-        output_image = np.dstack((processed_img, processed_img, processed_img))
+        processed_img: np.ndarray = self._preprocess_img(self.rotated_img)
+        output_image: np.ndarray = np.dstack(
+            (processed_img, processed_img, processed_img)
+        )
 
         ## Detect Text ##
         txt_data = pytesseract.image_to_data(
@@ -160,7 +162,7 @@ class TextCharacteristics:
 
         return blur_2
 
-    def _slice_rotate_img(self, img: np.ndarray, bounds: np.ndarray) -> np.ndarray:
+    def _slice_rotate_img(self, img: np.ndarray, bounds: np.ndarray) -> None:
         """
         Slice a portion of an image and rotate to be rectangular.
 
@@ -173,8 +175,7 @@ class TextCharacteristics:
 
         Returns
         -------
-        np.ndarray
-            the spliced/rotated images
+        None
         """
         ## Slice image around bounds and find center point ##
         x_vals = [coord[0] for coord in bounds]
@@ -207,8 +208,6 @@ class TextCharacteristics:
         self.rotated_img = cv2.warpAffine(
             cropped_img, rot_mat, cropped_img.shape[1::-1], flags=cv2.INTER_LINEAR
         )
-
-        return self.rotated_img
 
     def _get_text_color(self, img: np.ndarray, char_bounds: np.ndarray) -> str:
         """
