@@ -12,7 +12,7 @@ class Final(State):
     Member Variables:
         None
     """
-    async def run(self, drone: System):
+    async def run(self, drone: System) -> None:
         """Do nothing and end
         Args:
             drone: System - drone object that must be passed to any function with control of the drone

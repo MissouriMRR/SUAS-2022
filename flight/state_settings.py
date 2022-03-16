@@ -24,18 +24,20 @@ class StateSettings:
         __run_description: Description for Competition
     """
     def __init__(self, takeoff_bool: bool = False, num_waypoints: int = DEFAULT_WAYPOINTS,
-                 title: str = DEFAULT_RUN_TITLE, description: str = DEFAULT_RUN_DESCRIPTION):
+                 title: str = DEFAULT_RUN_TITLE, description: str = DEFAULT_RUN_DESCRIPTION) -> None:
         """Default constructor results in default settings
         Args:
             takeoff_bool: bool - determines if a simple takeoff procedure should be executed for testing
             num_waypoints: int - Number of waypoints, extracted from SUAS mission plan
             title: str - Title of current flight mission, for logging purposes
             description: str - Description of current flight mission, for logging purposes
+        Returns:
+            None
         """
-        self.__simple_takeoff = takeoff_bool
-        self.__num_waypoints = num_waypoints
-        self.__run_title = title
-        self.__run_description = description
+        self.__simple_takeoff: bool = takeoff_bool
+        self.__num_waypoints: int = num_waypoints
+        self.__run_title: str = title
+        self.__run_description: str = description
 
     # ---- Takeoff settings ---- #
     @property

@@ -23,4 +23,3 @@ class PreProcess(State):
             Takeoff: the next state, the Takeoff state to advance state machine
         """
         return Takeoff(self.state_settings)
-
