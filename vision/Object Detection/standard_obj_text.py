@@ -9,6 +9,23 @@ import numpy as np
 import pytesseract
 
 
+# Possible colors and HSV upper/lower bounds
+POSSIBLE_COLORS = {
+    "WHITE": np.array([[180, 18, 255], [0, 0, 231]]),
+    "BLACK": np.array([[180, 255, 30], [0, 0, 0]]),
+    "GRAY": np.array([[180, 18, 230], [0, 0, 40]]),
+    "RED": np.array(
+        [[180, 255, 255], [159, 50, 70], [9, 255, 255], [0, 50, 70]]
+    ),  # red wraps around and needs 2 ranges
+    "BLUE": np.array([[128, 255, 255], [90, 50, 70]]),
+    "GREEN": np.array([[89, 255, 255], [36, 50, 70]]),
+    "YELLOW": np.array([[35, 255, 255], [25, 50, 70]]),
+    "PURPLE": np.array([[158, 255, 255], [129, 50, 70]]),
+    "BROWN": np.array([[20, 255, 180], [10, 100, 120]]),
+    "ORANGE": np.array([[24, 255, 255], [10, 50, 70]]),
+}
+
+
 class TextCharacteristics:
     """
     Class for detecting characteristics of text on standard objects.
@@ -16,7 +33,12 @@ class TextCharacteristics:
     """
 
     def __init__(self):
+        # related to text detection
         self.rotated_img = np.array([])
+
+        # related to text color
+        self.text_cropped_img = np.array([])
+        self.kmeans = np.array([])
 
     def get_text_characteristics(self, img: np.ndarray, bounds: np.ndarray) -> tuple:
         """
@@ -212,9 +234,7 @@ class TextCharacteristics:
             [162, 42],
         ]  ## TODO: TEMP: change to function parameter
 
-        ## TODO: Split into multiple functions
-
-        # Slice image around bounds of text ##
+        # Slice rotated image around bounds of text ##
         x_vals = [coord[0] for coord in CHAR_BOUNDS]
         y_vals = [coord[1] for coord in CHAR_BOUNDS]
         min_x = np.amin(x_vals)
@@ -222,13 +242,13 @@ class TextCharacteristics:
         min_y = np.amin(y_vals)
         max_y = np.amax(y_vals)
 
-        cropped_img = self.rotated_img[min_y:max_y, min_x:max_x, :]
+        self.text_cropped_img = self.rotated_img[min_y:max_y, min_x:max_x, :]
 
         ## Run Kmeans with K=2 ##
-        kmeans_img = self._run_kmeans(cropped_img)
+        self._run_kmeans()
 
         ## Determine which of the 2 colors is more central ##
-        color_val = self._get_color_value(kmeans_img)
+        color_val = self._get_color_value()
 
         ## Match found color to color enum ##
         color = self._parse_color(color_val)
@@ -236,22 +256,16 @@ class TextCharacteristics:
 
         return color
 
-    def _run_kmeans(self, img: np.ndarray) -> np.ndarray:
+    def _run_kmeans(self) -> None:
         """
         Run kmeans with k=2 for color classification.
 
-        Parameters
-        ----------
-        img : np.ndarray
-            image to run kmeans on
-
         Returns
         -------
-        np.ndarray
-            image after preprocessing and kmeans
+        None
         """
         ## Image preprocessing to make text bigger/clearer ##
-        blur = cv2.medianBlur(img, ksize=9)
+        blur = cv2.medianBlur(self.text_cropped_img, ksize=9)
 
         kernel = np.ones((5, 5), np.uint8)
         erosion = cv2.erode(blur, kernel=kernel, iterations=1)
@@ -278,33 +292,27 @@ class TextCharacteristics:
         center = np.uint8(center)[:, :3]
 
         # Convert back to RGB
-        kmeans_img = center[label.flatten()]
-        kmeans_img = kmeans_img.reshape((dilated.shape))
+        self.kmeans_img = center[label.flatten()]
+        self.kmeans_img = self.kmeans_img.reshape((dilated.shape))
 
-        return kmeans_img
-
-    def _get_color_value(self, kmeans_img: np.ndarray) -> np.ndarray:
+    def _get_color_value(self) -> np.ndarray:
         """
         Get the RGB value of the text color.
-
-        Parameters
-        ----------
-        img: np.ndarray
-            the kmeans image containing the text
 
         Returns
         -------
         np.ndarray
             the color of the text
         """
-        ## TODO: Switch to member variables over parameters
         ## Find the two colors in the image ##
-        img_colors = np.unique(kmeans_img.reshape(-1, kmeans_img.shape[2]), axis=0)
+        img_colors = np.unique(
+            self.kmeans_img.reshape(-1, self.kmeans_img.shape[2]), axis=0
+        )
 
         # Mask of Color 1
-        color_1_r = np.where(kmeans_img[:, :, 0] == img_colors[0][0], 1, 0)
-        color_1_g = np.where(kmeans_img[:, :, 1] == img_colors[0][1], 1, 0)
-        color_1_b = np.where(kmeans_img[:, :, 2] == img_colors[0][2], 1, 0)
+        color_1_r = np.where(self.kmeans_img[:, :, 0] == img_colors[0][0], 1, 0)
+        color_1_g = np.where(self.kmeans_img[:, :, 1] == img_colors[0][1], 1, 0)
+        color_1_b = np.where(self.kmeans_img[:, :, 2] == img_colors[0][2], 1, 0)
         color_1_mat = np.bitwise_and(color_1_r, color_1_g, color_1_b).astype(np.uint8)
         color_1_adj_mat = np.where(color_1_mat == 1, 255, 128).astype(np.uint8)
 
@@ -349,29 +357,13 @@ class TextCharacteristics:
         str
             the color as a string
         """
-        # Possible colors and HSV upper/lower bounds
-        colors = {
-            "WHITE": np.array([[180, 18, 255], [0, 0, 231]]),
-            "BLACK": np.array([[180, 255, 30], [0, 0, 0]]),
-            "GRAY": np.array([[180, 18, 230], [0, 0, 40]]),
-            "RED": np.array(
-                [[180, 255, 255], [159, 50, 70], [9, 255, 255], [0, 50, 70]]
-            ),
-            "BLUE": np.array([[128, 255, 255], [90, 50, 70]]),
-            "GREEN": np.array([[89, 255, 255], [36, 50, 70]]),
-            "YELLOW": np.array([[35, 255, 255], [25, 50, 70]]),
-            "PURPLE": np.array([[158, 255, 255], [129, 50, 70]]),
-            "BROWN": np.array([[20, 255, 180], [10, 100, 120]]),
-            "ORANGE": np.array([[24, 255, 255], [10, 50, 70]]),
-        }
-
         ## Convert color to HSV
         frame = np.reshape(color_val, (1, 1, 3))  # store as single-pixel image
         hsv_color_val = cv2.cvtColor(frame, cv2.COLOR_RGB2HSV_FULL)
 
         ## Determine which ranges color falls in ##
-        matched = []
-        for c, ranges in colors.items():
+        matched = []  # colors matched to the text
+        for c, ranges in POSSIBLE_COLORS.items():
             if len(ranges) > 2:  # red has 2 ranges
                 if (cv2.inRange(hsv_color_val, ranges[1], ranges[0])[0, 0] == 255) or (
                     cv2.inRange(hsv_color_val, ranges[3], ranges[2])[0, 0] == 255
@@ -381,29 +373,30 @@ class TextCharacteristics:
                 matched.append(c)
 
         ## Determine distance to center to choose color if falls in multiple ##
-        color = ""
-        if len(matched) == 0:  # no matched color ## TODO: what to do here?
-            pass
-        elif len(matched) > 1:  # 2+ matched colors
+        color = None  # returns None if no match
+        if len(matched) > 1:  # 2+ matched colors
             # find color with min dist to color value
-            matched_dists = np.array([0 for _ in matched])
-            for i, c in enumerate(matched):
+            best_dist = 1000
+
+            for c in matched:
+                d = 1000
                 # get midpoint value of color range
-                d = 0
-                if len(colors[c]) > 2:  # handle red's 2 ranges
-                    mid1 = np.mean(colors[c][:2])
-                    mid2 = np.mean(colors[c][2:])
-                    d = min(
+                if len(POSSIBLE_COLORS[c]) > 2:  # handle red's 2 ranges
+                    mid1 = np.mean(POSSIBLE_COLORS[c][:2])  # midpoint of range 1
+                    mid2 = np.mean(POSSIBLE_COLORS[c][2:])  # midpoint of range 2
+                    d = min(  # min dist of color to range mid
                         np.sum(np.abs(hsv_color_val - mid1)),
                         np.sum(np.abs(hsv_color_val - mid2)),
                     )
-                else:
-                    mid = np.mean(colors[c])
-                    d = np.sum(np.abs(hsv_color_val - mid))
-                matched_dists[i] = d
+                else:  # any color except red
+                    mid = np.mean(POSSIBLE_COLORS[c])  # midpoint of range
+                    d = np.sum(
+                        np.abs(hsv_color_val - mid)
+                    )  # dist of color to range mid
 
-            # color with min distance is the color chosen
-            color = colors[matched_dists[np.argmin(matched_dists)]]
+                if d < best_dist:  # color with min distance is the color chosen
+                    best_dist = d
+                    color = c
         else:  # single matched color
             color = matched[0]
 
