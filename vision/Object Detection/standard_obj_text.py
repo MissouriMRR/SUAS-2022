@@ -3,8 +3,6 @@ Algorithms related to detecting the text of standard objects.
 """
 
 import cv2
-from cv2 import kmeans
-from matplotlib.pyplot import hsv
 import numpy as np
 import pytesseract
 
