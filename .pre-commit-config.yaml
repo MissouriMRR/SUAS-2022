@@ -27,25 +27,7 @@ repos:
     rev: 'v0.931'
     hooks:
     -   id: mypy
-        args:
-          [
-            --namespace-packages,
-            --ignore-missing-imports,
-            --disallow-any-generics,
-            --disallow-untyped-calls,
-            --disallow-untyped-defs,
-            --disallow-incomplete-defs,
-            --disallow-untyped-decorators,
-            --no-implicit-optional,
-            --warn-redundant-casts,
-            --warn-unreachable,
-            --local-partial-types,
-            --strict-equality,
-            --show-error-context,
-            --show-column-numbers,
-            --show-error-codes,
-            --pretty
-          ]
+        args: ["--config-file=.mypy.ini"]
 
 -   repo: https://github.com/PyCQA/pylint
     rev: 'v2.12.2'
