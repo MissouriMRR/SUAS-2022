@@ -3,33 +3,38 @@ import json
 
 
 def waypoint_parsing(filename: str) -> List[Dict[str, float]]:
-    """Accepts name of JSON file and extracts waypoint data from JSON
+    """Accepts name of JSON file and extracts waypoint data for SUAS mission
     Args:
         filename: str - String of data file to open and access waypoint data
     Returns:
-        Dict - dictionary containing latitude, longitude and altitude of each waypoint in mission
+        List - List of dictionaries containing latitude, longitude and altitude of each waypoint in mission
     """
-    f = open(filename, )
-    data_set: Dict[str, List] = json.load(f)
+    with open(filename) as f:
+        try:
+            data_set: Dict[str, List] = json.load(f)
+        except:
+            f.close()
     f.close()
 
-    waypoint_locs: List[Dict[str, float]] = []
-
-    for i in range(0, len(data_set["waypoints"])):
-        waypoint_locs.append(data_set["waypoints"][i])
+    waypoint_locs: List[Dict[str, float]] = [point for point in data_set["waypoints"]]
 
     return waypoint_locs
 
 
-def stationary_obstacle_parsing(filename: str):
-    f = open(filename, )
-    data_set = json.load(f)
-    # print(data_set)
+def stationary_obstacle_parsing(filename: str) -> List[Dict[str, float]]:
+    """Opens passed JSON file and extracts the Stationary obstacle attributes
+    Args:
+        filename: str - String of JSON file name and file type
+    Returns:
+        List - list of dictionaries containing latitude, longitude, radius, and height of obstacles
+    """
+    with open(filename) as f:
+        try:
+            data_set: Dict[str, List] = json.load(f)
+        except:
+            f.close()
     f.close()
 
-    stationary_Obs = []
+    stationary_obs: List[Dict[str, float]] = [obs for obs in data_set["stationaryObstacles"]]
 
-    for i in range(0, len(data_set["stationaryObstacles"])):
-        stationary_Obs.append(data_set["stationaryObstacles"][i])
-
-    return stationary_Obs
+    return stationary_obs
