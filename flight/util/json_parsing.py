@@ -1,3 +1,4 @@
+"""Utility function to parse mission data and retrieve specific component data"""
 from typing import Dict, List
 import json
 
