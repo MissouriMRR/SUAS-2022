@@ -11,6 +11,7 @@ import numpy.typing as npt
 
 import pytesseract
 
+
 # Possible colors and HSV upper/lower bounds
 POSSIBLE_COLORS: Dict[str, npt.NDArray[np.int64]] = {
     "WHITE": np.array([[180, 18, 255], [0, 0, 231]]),
@@ -45,7 +46,8 @@ class TextCharacteristics:
         self.color: Optional[str] = None
 
         # related to text orientation
-        self.orientation: Optional[str] = None
+        # NOTE: not implemented
+        # self.orientation: Optional[str] = None
 
     def get_text_characteristics(
         self, img: npt.NDArray[np.uint8], bounds: List[List[int]]
@@ -62,13 +64,13 @@ class TextCharacteristics:
 
         Returns
         -------
-        (character, orientation, color) : Tuple[str, str, str]
-            characteristics of the text in the form
+        (character, orientation, color) : Tuple[str | None, str | None, str | None]
+            characteristics of the text in the form.
+            Output is None when characteristic was not found, either because
+            the associated function failed or because text detection failed.
         """
         ## Get the character ##
-        characters: List[Tuple[str, List[Tuple[int, int]]]] = self._detect_text(
-            img, bounds
-        )
+        characters: List[Tuple[str, List[Tuple[int, int]]]] = self._detect_text(img, bounds)
         if len(characters) != 1:
             return (None, None, None)
         character: str
@@ -76,7 +78,9 @@ class TextCharacteristics:
         character, char_bounds = characters[0]
 
         ## Get the orientation ##
-        orientation: Optional[str] = self._get_orientation()
+        # NOTE: Not implemented
+        # orientation: Optional[str] = self._get_orientation()
+        orientation: Optional[str] = "N"
 
         ## Get the color of the text ##
         color: Optional[str] = self._get_text_color(char_bounds)
@@ -126,15 +130,17 @@ class TextCharacteristics:
                 # must be uppercase letter or number
                 if (txt.isalpha() and txt.isupper()) or txt.isnumeric():
                     # get data for each text object detected
-                    x = txt_data["left"][i]
-                    y = txt_data["top"][i]
-                    width = txt_data["width"][i]
-                    height = txt_data["height"][i]
+                    x: int = txt_data["left"][i]
+                    y: int = txt_data["top"][i]
+                    width: int = txt_data["width"][i]
+                    height: int = txt_data["height"][i]
 
                     # Don't continue processing if text is size of full image
+                    img_h: int
+                    img_w: int
                     img_h, img_w = np.shape(processed_img)
                     if not (x == 0 and y == 0 and width == img_w and height == img_h):
-                        t_bounds = [
+                        t_bounds: List[Tuple[int, int]] = [
                             (x, y),
                             (x + width, y),
                             (x + width, y + height),
@@ -161,30 +167,28 @@ class TextCharacteristics:
             the image after preprocessing
         """
         # grayscale
-        gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+        gray: npt.NDArray[np.uint8] = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
 
         # blur to remove noise
-        blur = cv2.medianBlur(gray, ksize=9)
+        blur: npt.NDArray[np.uint8] = cv2.medianBlur(gray, ksize=9)
 
         # erode and dilate to increase text clarity and reduce noise
-        kernel = np.ones((5, 5), np.uint8)
-        eroded = cv2.erode(blur, kernel=kernel, iterations=1)
-        dilated = cv2.dilate(eroded, kernel=kernel, iterations=1)
+        kernel: npt.NDArray[np.uint8] = np.ones((5, 5), np.uint8)
+        eroded: npt.NDArray[np.uint8] = cv2.erode(blur, kernel=kernel, iterations=1)
+        dilated: npt.NDArray[np.uint8] = cv2.dilate(eroded, kernel=kernel, iterations=1)
 
         # laplace edge detection
-        laplace_img = cv2.Laplacian(dilated, ddepth=cv2.CV_8U, ksize=5)
+        laplace_img: npt.NDArray[np.uint8] = cv2.Laplacian(dilated, ddepth=cv2.CV_8U, ksize=5)
 
         # binarize image
-        binarized = np.where(laplace_img > 50, np.uint8(255), np.uint8(0))
+        binarized: npt.NDArray[np.uint8] = np.where(laplace_img > 50, np.uint8(255), np.uint8(0))
 
         # additional blur to remove noise
         self.preprocessed = cv2.medianBlur(binarized, ksize=3)
 
         return self.preprocessed
 
-    def _slice_rotate_img(
-        self, img: npt.NDArray[np.uint8], bounds: List[List[int]]
-    ) -> None:
+    def _slice_rotate_img(self, img: npt.NDArray[np.uint8], bounds: List[List[int]]) -> None:
         """
         Slice a portion of an image and rotate to be rectangular.
 
@@ -194,23 +198,19 @@ class TextCharacteristics:
             the image to take a splice of
         bounds : List[List[int]]
             array of bound coordinates (4 x-y coordinates; tl-tr-br-bl)
-
-        Returns
-        -------
-        None
         """
         ## Slice image around bounds and find center point ##
-        x_vals = [coord[0] for coord in bounds]
-        y_vals = [coord[1] for coord in bounds]
-        min_x = np.amin(x_vals)
-        max_x = np.amax(x_vals)
-        min_y = np.amin(y_vals)
-        max_y = np.amax(y_vals)
+        x_vals: List[int] = [coord[0] for coord in bounds]
+        y_vals: List[int] = [coord[1] for coord in bounds]
+        min_x: int = np.amin(x_vals)
+        max_x: int = np.amax(x_vals)
+        min_y: int = np.amin(y_vals)
+        max_y: int = np.amax(y_vals)
 
-        cropped_img = img[min_x:max_x][min_y:max_y][:]
+        cropped_img: npt.NDArray[np.uint8] = img[min_x:max_x][min_y:max_y][:]
 
-        dimensions = np.shape(cropped_img)
-        center_pt = (
+        dimensions: Tuple[int, int, int] = np.shape(cropped_img)
+        center_pt: Tuple[int, int] = (
             int(dimensions[0] / 2),
             int(
                 dimensions[1] / 2,
@@ -219,14 +219,14 @@ class TextCharacteristics:
 
         ## Get angle of rotation ##
         ## NOTE: 1st index depends on how bounds stored for standard object
-        tl_x = bounds[0][0]
-        tr_x = bounds[3][0]
-        tl_y = bounds[0][1]
-        tr_y = bounds[3][1]
-        angle = np.rad2deg(np.arctan((tr_y - tl_y) / (tr_x - tl_x)))
+        tl_x: int = bounds[0][0]
+        tr_x: int = bounds[3][0]
+        tl_y: int = bounds[0][1]
+        tr_y: int = bounds[3][1]
+        angle: float = np.rad2deg(np.arctan((tr_y - tl_y) / (tr_x - tl_x)))
 
         ## Rotate image ##
-        rot_mat = cv2.getRotationMatrix2D(center_pt, angle, 1.0)
+        rot_mat: npt.NDArray[np.uint8] = cv2.getRotationMatrix2D(center_pt, angle, 1.0)
         self.rotated_img = cv2.warpAffine(
             cropped_img, rot_mat, cropped_img.shape[1::-1], flags=cv2.INTER_LINEAR
         )
@@ -242,12 +242,13 @@ class TextCharacteristics:
 
         Returns
         -------
-        color : str
-            the color of the text
+        color : Optional[str]
+            The color of the text. Possible colors are the string keys of POSSIBLE_COLORS.
+            Returns None if HSV color value did not fall in a range defined in POSSIBLE_COLORS.
         """
         # Slice rotated image around bounds of text ##
-        x_vals = [coord[0] for coord in char_bounds]
-        y_vals = [coord[1] for coord in char_bounds]
+        x_vals: List[int] = [coord[0] for coord in char_bounds]
+        y_vals: List[int] = [coord[1] for coord in char_bounds]
         min_x: int = np.amin(x_vals)
         max_x: int = np.amax(x_vals)
         min_y: int = np.amin(y_vals)
@@ -270,19 +271,13 @@ class TextCharacteristics:
     def _run_kmeans(self) -> None:
         """
         Run kmeans with K=2 for color classification.
-
-        Returns
-        -------
-        None
         """
         ## Image preprocessing to make text bigger/clearer ##
         blur: npt.NDArray[np.uint8] = cv2.medianBlur(self.text_cropped_img, ksize=9)
 
         kernel: npt.NDArray[np.uint8] = np.ones((5, 5), np.uint8)
         erosion: npt.NDArray[np.uint8] = cv2.erode(blur, kernel=kernel, iterations=1)
-        dilated: npt.NDArray[np.uint8] = cv2.dilate(
-            erosion, kernel=kernel, iterations=1
-        )
+        dilated: npt.NDArray[np.uint8] = cv2.dilate(erosion, kernel=kernel, iterations=1)
 
         ## Color and Location-based KMeans clustering ##
 
@@ -294,12 +289,15 @@ class TextCharacteristics:
         vectorized = np.hstack((vectorized, idxs))
 
         # Run Kmeans with K=2
-        term_crit = (
+        term_crit: Tuple[int, int, float] = (
             cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER,
             10,
             1.0,
         )
         k_val: int = 2
+
+        label: npt.NDArray[str]
+        center: npt.NDArray[np.float32]
         _, label, center = cv2.kmeans(
             np.float32(vectorized),
             K=k_val,
@@ -308,10 +306,10 @@ class TextCharacteristics:
             attempts=10,
             flags=0,
         )
-        center = center.astype(np.uint8)[:, :3]
+        center_int: npt.NDArray[np.uint8] = center.astype(np.uint8)[:, :3]
 
         # Convert back to BGR
-        self.kmeans_img = center[label.flatten()]
+        self.kmeans_img = center_int[label.flatten()]
         self.kmeans_img = self.kmeans_img.reshape((dilated.shape))
 
     def _get_color_value(self) -> npt.NDArray[np.uint8]:
@@ -324,7 +322,7 @@ class TextCharacteristics:
             the color of the text
         """
         ## Find the two colors in the image ##
-        img_colors: np.ndarray = np.unique(
+        img_colors: npt.NDArray[np.uint8] = np.unique(
             self.kmeans_img.reshape(-1, self.kmeans_img.shape[2]), axis=0
         )
 
@@ -338,17 +336,15 @@ class TextCharacteristics:
         color_1_b: npt.NDArray[np.uint8] = np.where(
             self.kmeans_img[:, :, 2] == img_colors[0][2], 1, 0
         )
-        color_1_mat: npt.NDArray[np.uint8] = np.bitwise_and(
-            color_1_r, color_1_g, color_1_b
-        ).astype(np.uint8)
-        color_1_adj_mat: npt.NDArray[np.uint8] = np.where(
-            color_1_mat == 1, 255, 128
-        ).astype(np.uint8)
-
-        # Mask of Color 2
-        color_2_mat: npt.NDArray[np.uint8] = np.where(color_1_mat == 1, 0, 1).astype(
+        color_1_mat: npt.NDArray[np.uint8] = np.bitwise_and(color_1_r, color_1_g, color_1_b).astype(
             np.uint8
         )
+        color_1_adj_mat: npt.NDArray[np.uint8] = np.where(color_1_mat == 1, 255, 128).astype(
+            np.uint8
+        )
+
+        # Mask of Color 2
+        color_2_mat: npt.NDArray[np.uint8] = np.where(color_1_mat == 1, 0, 1).astype(np.uint8)
 
         ## Calculate the mean distance of colors to center ##
         # Set middle pixel to 0
@@ -360,13 +356,11 @@ class TextCharacteristics:
         color_1_adj_mat[center_pt] = 0
 
         # calculate distance of each pixel to center pixel
-        distance_mat: npt.NDArray[float] = cv2.distanceTransform(
-            color_1_adj_mat, cv2.DIST_L2, 3
-        )
+        distance_mat: npt.NDArray[float] = cv2.distanceTransform(color_1_adj_mat, cv2.DIST_L2, 3)
 
         # average distance for each color
-        dist_1 = cv2.mean(distance_mat, color_1_mat)[0]
-        dist_2 = cv2.mean(distance_mat, color_2_mat)[0]
+        dist_1: float = cv2.mean(distance_mat, color_1_mat)[0]
+        dist_2: float = cv2.mean(distance_mat, color_2_mat)[0]
 
         ## Color of text is closest to the center ##
         color: npt.NDArray[np.uint8] = (
@@ -393,9 +387,7 @@ class TextCharacteristics:
         frame: npt.NDArray[np.uint8] = np.reshape(
             color_val, (1, 1, 3)
         )  # store as single-pixel image
-        hsv_color_val: npt.NDArray[np.uint8] = cv2.cvtColor(
-            frame, cv2.COLOR_BGR2HSV_FULL
-        )
+        hsv_color_val: npt.NDArray[np.uint8] = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV_FULL)
 
         ## Determine which ranges color falls in ##
         matched: List[str] = []  # colors matched to the text
@@ -412,23 +404,21 @@ class TextCharacteristics:
         self.color = None  # returns None if no match
         if len(matched) > 1:  # 2+ matched colors
             # find color with min dist to color value
-            best_dist = 1000
+            best_dist: float = float("inf")
 
             for col in matched:
-                dist = 1000
+                dist: float = float("inf")
                 # get midpoint value of color range
                 if len(POSSIBLE_COLORS[col]) > 2:  # handle red's 2 ranges
-                    mid1 = np.mean(POSSIBLE_COLORS[col][:2])  # midpoint of range 1
-                    mid2 = np.mean(POSSIBLE_COLORS[col][2:])  # midpoint of range 2
+                    mid1: float = np.mean(POSSIBLE_COLORS[col][:2])  # midpoint of range 1
+                    mid2: float = np.mean(POSSIBLE_COLORS[col][2:])  # midpoint of range 2
                     dist = min(  # min dist of color to range mid
                         np.sum(np.abs(hsv_color_val - mid1)),
                         np.sum(np.abs(hsv_color_val - mid2)),
                     )
                 else:  # any color except red
-                    mid = np.mean(POSSIBLE_COLORS[col])  # midpoint of range
-                    dist = np.sum(
-                        np.abs(hsv_color_val - mid)
-                    )  # dist of color to range mid
+                    mid: float = np.mean(POSSIBLE_COLORS[col])  # midpoint of range
+                    dist = np.sum(np.abs(hsv_color_val - mid))  # dist of color to range mid
 
                 if dist < best_dist:  # color with min distance is the color chosen
                     best_dist = dist
@@ -442,17 +432,14 @@ class TextCharacteristics:
         """
         Get the orientation of the text.
         """
-        ## TEMP: Implemmentation out of scope of current issue
-        self.orientation = "N"
-
-        return self.orientation
+        raise NotImplementedError("Orientation not implemented.")
 
 
 # Driver for testing text detection and classification functions.
 if __name__ == "__main__":
     import argparse
 
-    parser = argparse.ArgumentParser(
+    parser: argparse.ArgumentParser = argparse.ArgumentParser(
         description="Runs text characteristics algorithms. Must specify a file."
     )
 
@@ -463,12 +450,12 @@ if __name__ == "__main__":
         help="Filename of the image. Required argument.",
     )
 
-    args = parser.parse_args()
+    args: argparse.Namespace = parser.parse_args()
 
     # no benchmark name specified, cannot continue
     if not args.file_name:
         raise RuntimeError("No file specified.")
-    file_name = args.file_name
+    file_name: str = args.file_name
 
     test_img: npt.NDArray[np.uint8] = cv2.imread(file_name)
 
@@ -476,7 +463,9 @@ if __name__ == "__main__":
     ## NOTE: Change to function once implemented
     test_bounds: List[List[int]] = [[77, 184], [3, 91], [120, 0], [194, 82]]
 
-    detector = TextCharacteristics()
-    detected_chars = detector.get_text_characteristics(test_img, test_bounds)
+    detector: TextCharacteristics = TextCharacteristics()
+    detected_chars: Tuple[
+        Optional[str], Optional[str], Optional[str]
+    ] = detector.get_text_characteristics(test_img, test_bounds)
 
     print("The following character was found in the image:", detected_chars)
