@@ -44,9 +44,11 @@ class BoundingBox:
         obj_type: ObjectType,
         attributes: Dict[str, Union[int, float, str, None]],
     ) -> None:
-        self._vertices = vertices
-        self.obj_type = obj_type
-        self.attributes = attributes
+        self._vertices: Tuple[
+            Tuple[int, int], Tuple[int, int], Tuple[int, int], Tuple[int, int]
+        ] = vertices
+        self._obj_type: ObjectType = obj_type
+        self._attributes: Dict[str, Union[int, float, str, None]] = attributes
 
     @property
     def vertices(self) -> Tuple[Tuple[int, int], Tuple[int, int], Tuple[int, int], Tuple[int, int]]:
@@ -73,6 +75,54 @@ class BoundingBox:
             The 4 coordinates to assign to the BoundingBox.
         """
         self._vertices = verts
+
+    @property
+    def obj_type(self) -> ObjectType:
+        """
+        Getter for _obj_type. Gets the ObjectType of the BoundingBox.
+
+        Returns
+        -------
+        _obj_type : ObjectType
+            The ObjectType of the BoundingBox.
+        """
+        return self._obj_type
+
+    @obj_type.setter
+    def obj_type(self, o_type: ObjectType) -> None:
+        """
+        Setter for _obj_type. Sets the value of the BoundingBox's ObjectType.
+
+        Parameters
+        ----------
+        o_type : ObjectType
+            The ObjectType to assign to the BoundingBox.
+        """
+        self._obj_type = o_type
+
+    @property
+    def attributes(self) -> Dict[str, Union[int, float, str, None]]:
+        """
+        Getter for _attributes. Gets the additional attributes of the BoundingBox.
+
+        Returns
+        -------
+        _attributes : Dict[str, Union[int, float, str, None]]
+            Any additional attributes of the BoundingBox.
+        """
+        return self._attributes
+
+    @attributes.setter
+    def attributes(self, att: Dict[str, Union[int, float, str, None]]) -> None:
+        """
+        Setter for _attributes. Sets the value of the BoundingBox's additional attributes.
+
+        Parameters
+        ----------
+        att : ObjectType
+            The additional attributes to assign to the BoundingBox.
+        """
+        self._attributes = att
 
     def __repr__(self) -> str:
         """
