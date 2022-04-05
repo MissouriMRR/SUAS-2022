@@ -5,7 +5,9 @@ are used to convey information between flight and vision processes.
 
 from enum import Enum
 
-from typing import Dict, Tuple, Union
+from typing import Dict, List, Tuple, Union
+
+import numpy as np
 
 
 class ObjectType(Enum):
@@ -57,6 +59,79 @@ class BoundingBox:
             The string representation of the BoundingBox object.
         """
         return f"BoundingBox[{id(self)}, {self.obj_type}]: {str(self.vertices)}"
+
+    def get_x_vals(self) -> List[int]:
+        """
+        Gets the x values of the 4 coordinates.
+
+        Returns
+        -------
+        x_vals : List[int]
+            The 4 x values of the vertices.
+        """
+        x_vals: List[int] = [vert[0] for vert in self.vertices]
+        return x_vals
+
+    def get_y_vals(self) -> List[int]:
+        """
+        Gets the y values of the 4 coordinates.
+
+        Returns
+        -------
+        y_vals : List[int]
+            The 4 y values of the vertices.
+        """
+        y_vals: List[int] = [vert[1] for vert in self.vertices]
+        return y_vals
+
+    def get_x_extremes(self) -> Tuple[int, int]:
+        """
+        Gets the minimum and maximum x values of the BoundingBox
+
+        Returns
+        -------
+        min_x, max_x : Tuple[int, int]
+            The minimum and maximum x values.
+        """
+        x_vals: List[int] = self.get_x_vals()
+        min_x: int = np.amin(x_vals)
+        max_x: int = np.amax(x_vals)
+
+        return min_x, max_x
+
+    def get_y_extremes(self) -> Tuple[int, int]:
+        """
+        Gets the minimum and maximum y values of the BoundingBox
+
+        Returns
+        -------
+        min_y, max_y : Tuple[int, int]
+            The minimum and maximum y values.
+        """
+        y_vals: List[int] = self.get_y_vals()
+        min_y: int = np.amin(y_vals)
+        max_y: int = np.amax(y_vals)
+
+        return min_y, max_y
+
+    def get_rotation_angle(self) -> float:
+        """
+        Calculates the angle of rotation of the BoundingBox
+        based on the top left and right coordinates.
+
+        Returns
+        -------
+        angle : float
+            The angle of rotation of the BoundingBox in degrees.
+        """
+        tl_x: int = self.vertices[0][0]
+        tr_x: int = self.vertices[1][0]
+        tl_y: int = self.vertices[0][1]
+        tr_y: int = self.vertices[1][1]
+
+        angle: float = np.rad2deg(np.arctan((tr_y - tl_y) / (tr_x - tl_x)))
+
+        return angle
 
 
 if __name__ == "__main__":
