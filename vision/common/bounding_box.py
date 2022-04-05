@@ -44,9 +44,35 @@ class BoundingBox:
         obj_type: ObjectType,
         attributes: Dict[str, Union[int, float, str, None]],
     ) -> None:
-        self.vertices = vertices
+        self._vertices = vertices
         self.obj_type = obj_type
         self.attributes = attributes
+
+    @property
+    def vertices(self) -> Tuple[Tuple[int, int], Tuple[int, int], Tuple[int, int], Tuple[int, int]]:
+        """
+        Getter for _vertices. Gets the 4 vertices that make up the BoundingBox.
+
+        Returns
+        -------
+        _vertices : Tuple[Tuple[int, int], Tuple[int, int], Tuple[int, int], Tuple[int, int]]
+            The 4 coordinates of the BoundingBox.
+        """
+        return self._vertices
+
+    @vertices.setter
+    def vertices(
+        self, verts: Tuple[Tuple[int, int], Tuple[int, int], Tuple[int, int], Tuple[int, int]]
+    ) -> None:
+        """
+        Setter for _vertices. Sets the 4 vertices that make up the BoundingBox.
+
+        Parameters
+        ----------
+        vert : Tuple[Tuple[int, int], Tuple[int, int], Tuple[int, int], Tuple[int, int]]
+            The 4 coordinates to assign to the BoundingBox.
+        """
+        self._vertices = verts
 
     def __repr__(self) -> str:
         """
@@ -58,7 +84,7 @@ class BoundingBox:
         str
             The string representation of the BoundingBox object.
         """
-        return f"BoundingBox[{id(self)}, {self.obj_type}]: {str(self.vertices)}"
+        return f"BoundingBox[{id(self)}, {self.obj_type}]: {str(self._vertices)}"
 
     def get_x_vals(self) -> List[int]:
         """
@@ -69,7 +95,7 @@ class BoundingBox:
         x_vals : List[int]
             The 4 x values of the vertices.
         """
-        x_vals: List[int] = [vert[0] for vert in self.vertices]
+        x_vals: List[int] = [vert[0] for vert in self._vertices]
         return x_vals
 
     def get_y_vals(self) -> List[int]:
@@ -81,7 +107,7 @@ class BoundingBox:
         y_vals : List[int]
             The 4 y values of the vertices.
         """
-        y_vals: List[int] = [vert[1] for vert in self.vertices]
+        y_vals: List[int] = [vert[1] for vert in self._vertices]
         return y_vals
 
     def get_x_extremes(self) -> Tuple[int, int]:
