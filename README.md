@@ -82,11 +82,13 @@ pre-commit install
 - When committing code, our pre-commit hooks will scan your files and look for errors, type inconsistencies, bad practices, and non-conformities to our coding style.
 - This means that your commit will be rejected if it fails any one of the pre-commit hooks.
 - Oftentimes, one may need to commit code to save their place or the current version in unfinished code and bypass pre-commit hooks
+#### Bypassing All Pre-Commit Hooks
+- To bypass all pre-commit hooks, add the `--no-verify` flag to your `git commit` execution.
+#### Bypassing Invidual Pre-Commit Hooks
 - To bypass specific hooks on a module, place the following comments at the beginning of your file(s) for each respective hook.
     - Black: `# fmt: off`
     - Mypy: `# type: ignore`
     - Pylint: `# pylint: disable=all`
-- To bypass all pre-commit hooks, add the `--no-verify` flag to your `git commit` execution.
 - Pull requests made that bypass pre-commit hooks without prior approval will be rejected.
 
 # License
