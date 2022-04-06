@@ -11,6 +11,8 @@ import numpy.typing as npt
 
 import pytesseract
 
+from bounding_box import ObjectType, BoundingBox
+
 
 # Possible colors and HSV upper/lower bounds
 POSSIBLE_COLORS: Dict[str, npt.NDArray[np.int64]] = {
@@ -50,7 +52,7 @@ class TextCharacteristics:
         # self.orientation: Optional[str] = None
 
     def get_text_characteristics(
-        self, img: npt.NDArray[np.uint8], bounds: List[List[int]]
+        self, img: npt.NDArray[np.uint8], bounds: BoundingBox
     ) -> Tuple[Optional[str], Optional[str], Optional[str]]:
         """
         Gets the characteristics of the text on the standard object.
@@ -59,7 +61,7 @@ class TextCharacteristics:
         ----------
         img : np.NDArray[np.uint8]
             image to find characteristics of text within
-        bounds : List[List[int, int]]
+        bounds : BoundingBox
             bounds of standard object containing text on in image
 
         Returns
@@ -70,11 +72,11 @@ class TextCharacteristics:
             the associated function failed or because text detection failed.
         """
         ## Get the character ##
-        characters: List[Tuple[str, List[Tuple[int, int]]]] = self._detect_text(img, bounds)
+        characters: List[Tuple[str, BoundingBox]] = self._detect_text(img, bounds)
         if len(characters) != 1:
             return (None, None, None)
         character: str
-        char_bounds: List[Tuple[int, int]]
+        char_bounds: BoundingBox
         character, char_bounds = characters[0]
 
         ## Get the orientation ##
@@ -88,8 +90,8 @@ class TextCharacteristics:
         return (character, orientation, color)
 
     def _detect_text(
-        self, img: npt.NDArray[np.uint8], bounds: List[List[int]]
-    ) -> List[Tuple[str, List[Tuple[int, int]]]]:
+        self, img: npt.NDArray[np.uint8], bounds: BoundingBox
+    ) -> List[Tuple[str, BoundingBox]]:
         """
         Detect text within an image.
         Will return string for parameter odlc.alphanumeric
@@ -98,12 +100,12 @@ class TextCharacteristics:
         ----------
         img : npt.NDArray[np.uint8]
             image to detect text within
-        bounds : List[List[int, int]]
-            array of tuple bounds (4 x-y coordinates)
+        bounds : BoundingBox
+            BoundingBox of standard object on which to detect text.
 
         Returns
         -------
-        found_characters : List[Tuple[str, List[Tuple[int, int]]]]
+        found_characters : List[Tuple[str, BoundingBox]]
             list containing detected characters and their bounds
         """
         ## Crop and rotate the image ##
@@ -124,7 +126,7 @@ class TextCharacteristics:
         )
 
         ## Filter detected text to find valid characters ##
-        found_characters: List[Tuple[str, List[Tuple[int, int]]]] = []
+        found_characters: List[Tuple[str, BoundingBox]] = []
         for i, txt in enumerate(txt_data["text"]):
             if (txt is not None) and (len(txt) == 1):  # length of 1
                 # must be uppercase letter or number
@@ -140,15 +142,18 @@ class TextCharacteristics:
                     img_w: int
                     img_h, img_w = np.shape(processed_img)
                     if not (x == 0 and y == 0 and width == img_w and height == img_h):
-                        t_bounds: List[Tuple[int, int]] = [
+                        t_bounds: Tuple[
+                            Tuple[int, int], Tuple[int, int], Tuple[int, int], Tuple[int, int]
+                        ] = (
                             (x, y),
                             (x + width, y),
                             (x + width, y + height),
                             (x, y + height),
-                        ]
+                        )
+                        text_bb = BoundingBox(t_bounds, ObjectType.TEXT)
 
                         # add to found characters array
-                        found_characters += [(txt, t_bounds)]
+                        found_characters += [(txt, text_bb)]
 
         return found_characters
 
@@ -188,7 +193,7 @@ class TextCharacteristics:
 
         return self.preprocessed
 
-    def _slice_rotate_img(self, img: npt.NDArray[np.uint8], bounds: List[List[int]]) -> None:
+    def _slice_rotate_img(self, img: npt.NDArray[np.uint8], bounds: BoundingBox) -> None:
         """
         Slice a portion of an image and rotate to be rectangular.
 
@@ -196,34 +201,28 @@ class TextCharacteristics:
         ----------
         img : npt.NDArray[np.uint8]
             the image to take a splice of
-        bounds : List[List[int]]
+        bounds : BoundingBox
             array of bound coordinates (4 x-y coordinates; tl-tr-br-bl)
         """
         ## Slice image around bounds and find center point ##
-        x_vals: List[int] = [coord[0] for coord in bounds]
-        y_vals: List[int] = [coord[1] for coord in bounds]
-        min_x: int = np.amin(x_vals)
-        max_x: int = np.amax(x_vals)
-        min_y: int = np.amin(y_vals)
-        max_y: int = np.amax(y_vals)
+        min_x: int
+        max_x: int
+        min_x, max_x = bounds.get_x_extremes()
 
-        cropped_img: npt.NDArray[np.uint8] = img[min_x:max_x][min_y:max_y][:]
+        min_y: int
+        max_y: int
+        min_y, max_y = bounds.get_y_extremes()
+
+        cropped_img: npt.NDArray[np.uint8] = img[min_y:max_y, min_x:max_x, :]
 
         dimensions: Tuple[int, int, int] = np.shape(cropped_img)
         center_pt: Tuple[int, int] = (
             int(dimensions[0] / 2),
-            int(
-                dimensions[1] / 2,
-            ),
+            int(dimensions[1] / 2),
         )
 
         ## Get angle of rotation ##
-        ## NOTE: 1st index depends on how bounds stored for standard object
-        tl_x: int = bounds[0][0]
-        tr_x: int = bounds[3][0]
-        tl_y: int = bounds[0][1]
-        tr_y: int = bounds[3][1]
-        angle: float = np.rad2deg(np.arctan((tr_y - tl_y) / (tr_x - tl_x)))
+        angle: float = bounds.get_rotation_angle()
 
         ## Rotate image ##
         rot_mat: npt.NDArray[np.uint8] = cv2.getRotationMatrix2D(center_pt, angle, 1.0)
@@ -231,14 +230,14 @@ class TextCharacteristics:
             cropped_img, rot_mat, cropped_img.shape[1::-1], flags=cv2.INTER_LINEAR
         )
 
-    def _get_text_color(self, char_bounds: List[Tuple[int, int]]) -> Optional[str]:
+    def _get_text_color(self, char_bounds: BoundingBox) -> Optional[str]:
         """
         Detect the color of the text.
 
         Parameters
         ----------
-        char_bounds : List[Tuple[int, int]]
-            bounds of the text
+        char_bounds : BoundingBox
+            BoundingBox around the text
 
         Returns
         -------
@@ -247,12 +246,13 @@ class TextCharacteristics:
             Returns None if HSV color value did not fall in a range defined in POSSIBLE_COLORS.
         """
         # Slice rotated image around bounds of text ##
-        x_vals: List[int] = [coord[0] for coord in char_bounds]
-        y_vals: List[int] = [coord[1] for coord in char_bounds]
-        min_x: int = np.amin(x_vals)
-        max_x: int = np.amax(x_vals)
-        min_y: int = np.amin(y_vals)
-        max_y: int = np.amax(y_vals)
+        min_x: int
+        max_x: int
+        min_x, max_x = char_bounds.get_x_extremes()
+
+        min_y: int
+        max_y: int
+        min_y, max_y = char_bounds.get_y_extremes()
 
         self.text_cropped_img = self.rotated_img[min_y:max_y, min_x:max_x, :]
 
@@ -461,7 +461,9 @@ if __name__ == "__main__":
 
     # bounds for stock image, given by standard object detection
     ## NOTE: Change to function once implemented
-    test_bounds: List[List[int]] = [[77, 184], [3, 91], [120, 0], [194, 82]]
+    test_bounds: BoundingBox = BoundingBox(
+        ((77, 184), (3, 91), (120, 0), (194, 82)), ObjectType.STD_OBJECT
+    )
 
     detector: TextCharacteristics = TextCharacteristics()
     detected_chars: Tuple[
