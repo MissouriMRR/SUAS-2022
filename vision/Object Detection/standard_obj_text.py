@@ -11,7 +11,7 @@ import numpy.typing as npt
 
 import pytesseract
 
-from bounding_box import ObjectType, BoundingBox
+from vision.common.bounding_box import ObjectType, BoundingBox
 
 
 # Possible colors and HSV upper/lower bounds
@@ -37,7 +37,10 @@ class TextCharacteristics:
     Characteristics are of the character, orientation, and color.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, img: Optional[npt.NDArray[np.uint8]] = None) -> None:
+        # Image to operate on
+        self._img = img if img is not None else np.array([])
+
         # related to text detection
         self.rotated_img: npt.NDArray[np.uint8] = np.array([])
         self.preprocessed: npt.NDArray[np.uint8] = np.array([])
@@ -51,16 +54,38 @@ class TextCharacteristics:
         # NOTE: not implemented
         # self.orientation: Optional[str] = None
 
+    @property
+    def img(self) -> npt.NDArray[np.uint8]:
+        """
+        Getter for _img. Gets the current image being processed.
+
+        Returns
+        -------
+        _img : npt.NDArray[np.uint8]
+            The image to find characteristics in.
+        """
+        return self._img
+
+    @img.setter
+    def img(self, image: npt.NDArray[np.uint8]) -> None:
+        """
+        Setter for _img. Sets the image to process.
+
+        Parameters
+        ----------
+        image: npt.NDArray[np.uint8]
+            The image to process.
+        """
+        self._img = image
+
     def get_text_characteristics(
-        self, img: npt.NDArray[np.uint8], bounds: BoundingBox
+        self, bounds: BoundingBox
     ) -> Tuple[Optional[str], Optional[str], Optional[str]]:
         """
         Gets the characteristics of the text on the standard object.
 
         Parameters
         ----------
-        img : np.NDArray[np.uint8]
-            image to find characteristics of text within
         bounds : BoundingBox
             bounds of standard object containing text on in image
 
@@ -72,7 +97,7 @@ class TextCharacteristics:
             the associated function failed or because text detection failed.
         """
         ## Get the character ##
-        characters: List[Tuple[str, BoundingBox]] = self._detect_text(img, bounds)
+        characters: List[Tuple[str, BoundingBox]] = self.detect_text(bounds)
         if len(characters) != 1:
             return (None, None, None)
         character: str
@@ -85,21 +110,17 @@ class TextCharacteristics:
         orientation: Optional[str] = "N"
 
         ## Get the color of the text ##
-        color: Optional[str] = self._get_text_color(char_bounds)
+        color: Optional[str] = self.get_text_color(char_bounds)
 
         return (character, orientation, color)
 
-    def _detect_text(
-        self, img: npt.NDArray[np.uint8], bounds: BoundingBox
-    ) -> List[Tuple[str, BoundingBox]]:
+    def detect_text(self, bounds: BoundingBox) -> List[Tuple[str, BoundingBox]]:
         """
         Detect text within an image.
         Will return string for parameter odlc.alphanumeric
 
         Parameters
         ----------
-        img : npt.NDArray[np.uint8]
-            image to detect text within
         bounds : BoundingBox
             BoundingBox of standard object on which to detect text.
 
@@ -109,7 +130,7 @@ class TextCharacteristics:
             list containing detected characters and their bounds
         """
         ## Crop and rotate the image ##
-        self._slice_rotate_img(img, bounds)
+        self._slice_rotate_img(self._img, bounds)
 
         ## Image preprocessing to make text more clear ##
         processed_img: npt.NDArray[np.uint8] = self._preprocess_img(self.rotated_img)
@@ -118,7 +139,7 @@ class TextCharacteristics:
         )
 
         ## Detect Text ##
-        txt_data = pytesseract.image_to_data(
+        txt_data: Dict[str, list] = pytesseract.image_to_data(
             output_image,
             output_type=pytesseract.Output.DICT,
             lang="eng",
@@ -230,7 +251,7 @@ class TextCharacteristics:
             cropped_img, rot_mat, cropped_img.shape[1::-1], flags=cv2.INTER_LINEAR
         )
 
-    def _get_text_color(self, char_bounds: BoundingBox) -> Optional[str]:
+    def get_text_color(self, char_bounds: BoundingBox) -> Optional[str]:
         """
         Detect the color of the text.
 
@@ -428,7 +449,7 @@ class TextCharacteristics:
 
         return self.color
 
-    def _get_orientation(self) -> Optional[str]:
+    def get_orientation(self) -> Optional[str]:
         """
         Get the orientation of the text.
         """
@@ -466,8 +487,9 @@ if __name__ == "__main__":
     )
 
     detector: TextCharacteristics = TextCharacteristics()
+    detector.img = test_img
     detected_chars: Tuple[
         Optional[str], Optional[str], Optional[str]
-    ] = detector.get_text_characteristics(test_img, test_bounds)
+    ] = detector.get_text_characteristics(test_bounds)
 
     print("The following character was found in the image:", detected_chars)
