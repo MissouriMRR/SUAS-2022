@@ -13,12 +13,11 @@ import numpy as np
 class ObjectType(Enum):
     """
     Type of object that a BoundingBox represents.
-    NOTE: The string of an enum is accessed with the name property.
     """
 
-    STD_OBJECT = 0
-    EMG_OBJECT = 1
-    TEXT = 2
+    STD_OBJECT: str = "std_object"
+    EMG_OBJECT: str = "emg_object"
+    TEXT: str = "text"
 
 
 class BoundingBox:
