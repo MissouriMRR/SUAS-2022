@@ -41,8 +41,10 @@ class TextCharacteristics:
         # Image to operate on
         self._img: npt.NDArray[np.uint8] = img if img is not None else np.array([])
 
-        # related to text detection
+        # Image to get text color in. Set automatically by detect_text()
         self._rotated_img: npt.NDArray[np.uint8] = np.array([])
+
+        # related to text detection
         self._preprocessed: npt.NDArray[np.uint8] = np.array([])
 
         # related to text color
@@ -78,11 +80,37 @@ class TextCharacteristics:
         """
         self._img = image
 
+    @property
+    def rotated_img(self) -> npt.NDArray[np.uint8]:
+        """
+        Getter for _rotated_img. Gets the current
+        rotated image being processed to find the text color.
+
+        Returns
+        -------
+        _rotated_img : npt.NDArray[np.uint8]
+            The image to find the text color in.
+        """
+        return self._rotated_img
+
+    @rotated_img.setter
+    def rotated_img(self, image: npt.NDArray[np.uint8]) -> None:
+        """
+        Setter for _rotated_img. Sets the image to process to find text color.
+
+        Parameters
+        ----------
+        image: npt.NDArray[np.uint8]
+            The image to process.
+        """
+        self._rotated_img = image
+
     def get_text_characteristics(
         self, bounds: BoundingBox
     ) -> Tuple[Optional[str], Optional[str], Optional[str]]:
         """
         Gets the characteristics of the text on the standard object.
+        NOTE: Need to set image before calling.
 
         Parameters
         ----------
@@ -117,7 +145,7 @@ class TextCharacteristics:
     def detect_text(self, bounds: BoundingBox) -> List[Tuple[str, BoundingBox]]:
         """
         Detect text within an image.
-        Will return string for parameter odlc.alphanumeric
+        NOTE: Need to set image before calling.
 
         Parameters
         ----------
@@ -254,6 +282,7 @@ class TextCharacteristics:
     def get_text_color(self, char_bounds: BoundingBox) -> Optional[str]:
         """
         Detect the color of the text.
+        NOTE: Need to set rotated image before calling if running seperately.
 
         Parameters
         ----------
@@ -452,6 +481,7 @@ class TextCharacteristics:
     def get_orientation(self) -> Optional[str]:
         """
         Get the orientation of the text.
+        NOTE: Not yet implemeneted.
         """
         raise NotImplementedError("Orientation not implemented.")
 
