@@ -5,7 +5,7 @@ are used to convey information between flight and vision processes.
 
 from enum import Enum
 
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 
@@ -33,7 +33,7 @@ class BoundingBox:
         coordinate consists of a tuple 2 integers.
     obj_type : ObjectType
         Enumeration that denotes what type of object the BoundingBox represents.
-    attributes : Optional[Dict[str, Union[int, float, str, None]]]
+    attributes : Optional[Dict[str, Any]]
         Any additional attributes to convey about the object in the BoundingBox.
     """
 
@@ -41,15 +41,13 @@ class BoundingBox:
         self,
         vertices: Tuple[Tuple[int, int], Tuple[int, int], Tuple[int, int], Tuple[int, int]],
         obj_type: ObjectType,
-        attributes: Optional[Dict[str, Union[int, float, str, None]]] = None,
+        attributes: Optional[Dict[str, Any]] = None,
     ) -> None:
         self._vertices: Tuple[
             Tuple[int, int], Tuple[int, int], Tuple[int, int], Tuple[int, int]
         ] = vertices
         self._obj_type: ObjectType = obj_type
-        self._attributes: Dict[str, Union[int, float, str, None]] = (
-            attributes if attributes is not None else {}
-        )
+        self._attributes: Dict[str, Any] = attributes if attributes is not None else {}
 
     @property
     def vertices(self) -> Tuple[Tuple[int, int], Tuple[int, int], Tuple[int, int], Tuple[int, int]]:
@@ -102,25 +100,25 @@ class BoundingBox:
         self._obj_type = o_type
 
     @property
-    def attributes(self) -> Dict[str, Union[int, float, str, None]]:
+    def attributes(self) -> Dict[str, Any]:
         """
         Getter for _attributes. Gets the additional attributes of the BoundingBox.
 
         Returns
         -------
-        _attributes : Dict[str, Union[int, float, str, None]]
+        _attributes : Dict[str, Any]
             Any additional attributes of the BoundingBox.
         """
         return self._attributes
 
     @attributes.setter
-    def attributes(self, att: Dict[str, Union[int, float, str, None]]) -> None:
+    def attributes(self, att: Dict[str, Any]) -> None:
         """
         Setter for _attributes. Sets the value of the BoundingBox's additional attributes.
 
         Parameters
         ----------
-        att : Dict[str, Union[int, float, str, None]]
+        att : Dict[str, Any]
             The additional attributes to assign to the BoundingBox.
         """
         self._attributes = att
