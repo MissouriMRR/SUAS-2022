@@ -39,16 +39,16 @@ class TextCharacteristics:
 
     def __init__(self, img: Optional[npt.NDArray[np.uint8]] = None) -> None:
         # Image to operate on
-        self._img = img if img is not None else np.array([])
+        self._img: npt.NDArray[np.uint8] = img if img is not None else np.array([])
 
         # related to text detection
-        self.rotated_img: npt.NDArray[np.uint8] = np.array([])
-        self.preprocessed: npt.NDArray[np.uint8] = np.array([])
+        self._rotated_img: npt.NDArray[np.uint8] = np.array([])
+        self._preprocessed: npt.NDArray[np.uint8] = np.array([])
 
         # related to text color
-        self.text_cropped_img: npt.NDArray[np.uint8] = np.array([])
-        self.kmeans_img: npt.NDArray[np.uint8] = np.array([])
-        self.color: Optional[str] = None
+        self._text_cropped_img: npt.NDArray[np.uint8] = np.array([])
+        self._kmeans_img: npt.NDArray[np.uint8] = np.array([])
+        self._color: Optional[str] = None
 
         # related to text orientation
         # NOTE: not implemented
@@ -133,7 +133,7 @@ class TextCharacteristics:
         self._slice_rotate_img(self._img, bounds)
 
         ## Image preprocessing to make text more clear ##
-        processed_img: npt.NDArray[np.uint8] = self._preprocess_img(self.rotated_img)
+        processed_img: npt.NDArray[np.uint8] = self._preprocess_img(self._rotated_img)
         output_image: npt.NDArray[np.uint8] = np.dstack(
             (processed_img, processed_img, processed_img)
         )
@@ -210,9 +210,9 @@ class TextCharacteristics:
         binarized: npt.NDArray[np.uint8] = np.where(laplace_img > 50, np.uint8(255), np.uint8(0))
 
         # additional blur to remove noise
-        self.preprocessed = cv2.medianBlur(binarized, ksize=3)
+        self._preprocessed = cv2.medianBlur(binarized, ksize=3)
 
-        return self.preprocessed
+        return self._preprocessed
 
     def _slice_rotate_img(self, img: npt.NDArray[np.uint8], bounds: BoundingBox) -> None:
         """
@@ -247,7 +247,7 @@ class TextCharacteristics:
 
         ## Rotate image ##
         rot_mat: npt.NDArray[np.uint8] = cv2.getRotationMatrix2D(center_pt, angle, 1.0)
-        self.rotated_img = cv2.warpAffine(
+        self._rotated_img = cv2.warpAffine(
             cropped_img, rot_mat, cropped_img.shape[1::-1], flags=cv2.INTER_LINEAR
         )
 
@@ -275,7 +275,7 @@ class TextCharacteristics:
         max_y: int
         min_y, max_y = char_bounds.get_y_extremes()
 
-        self.text_cropped_img = self.rotated_img[min_y:max_y, min_x:max_x, :]
+        self._text_cropped_img = self._rotated_img[min_y:max_y, min_x:max_x, :]
 
         ## Run Kmeans with K=2 ##
         self._run_kmeans()
@@ -294,7 +294,7 @@ class TextCharacteristics:
         Run kmeans with K=2 for color classification.
         """
         ## Image preprocessing to make text bigger/clearer ##
-        blur: npt.NDArray[np.uint8] = cv2.medianBlur(self.text_cropped_img, ksize=9)
+        blur: npt.NDArray[np.uint8] = cv2.medianBlur(self._text_cropped_img, ksize=9)
 
         kernel: npt.NDArray[np.uint8] = np.ones((5, 5), np.uint8)
         erosion: npt.NDArray[np.uint8] = cv2.erode(blur, kernel=kernel, iterations=1)
@@ -330,8 +330,8 @@ class TextCharacteristics:
         center_int: npt.NDArray[np.uint8] = center.astype(np.uint8)[:, :3]
 
         # Convert back to BGR
-        self.kmeans_img = center_int[label.flatten()]
-        self.kmeans_img = self.kmeans_img.reshape((dilated.shape))
+        self._kmeans_img = center_int[label.flatten()]
+        self._kmeans_img = self._kmeans_img.reshape((dilated.shape))
 
     def _get_color_value(self) -> npt.NDArray[np.uint8]:
         """
@@ -344,18 +344,18 @@ class TextCharacteristics:
         """
         ## Find the two colors in the image ##
         img_colors: npt.NDArray[np.uint8] = np.unique(
-            self.kmeans_img.reshape(-1, self.kmeans_img.shape[2]), axis=0
+            self._kmeans_img.reshape(-1, self._kmeans_img.shape[2]), axis=0
         )
 
         # Mask of Color 1
         color_1_r: npt.NDArray[np.uint8] = np.where(
-            self.kmeans_img[:, :, 0] == img_colors[0][0], 1, 0
+            self._kmeans_img[:, :, 0] == img_colors[0][0], 1, 0
         )
         color_1_g: npt.NDArray[np.uint8] = np.where(
-            self.kmeans_img[:, :, 1] == img_colors[0][1], 1, 0
+            self._kmeans_img[:, :, 1] == img_colors[0][1], 1, 0
         )
         color_1_b: npt.NDArray[np.uint8] = np.where(
-            self.kmeans_img[:, :, 2] == img_colors[0][2], 1, 0
+            self._kmeans_img[:, :, 2] == img_colors[0][2], 1, 0
         )
         color_1_mat: npt.NDArray[np.uint8] = np.bitwise_and(color_1_r, color_1_g, color_1_b).astype(
             np.uint8
@@ -422,7 +422,7 @@ class TextCharacteristics:
                 matched.append(col)
 
         ## Determine distance to center to choose color if falls in multiple ##
-        self.color = None  # returns None if no match
+        self._color = None  # returns None if no match
         if len(matched) > 1:  # 2+ matched colors
             # find color with min dist to color value
             best_dist: float = float("inf")
@@ -443,11 +443,11 @@ class TextCharacteristics:
 
                 if dist < best_dist:  # color with min distance is the color chosen
                     best_dist = dist
-                    self.color = col
+                    self._color = col
         else:  # single matched color
-            self.color = matched[0]
+            self._color = matched[0]
 
-        return self.color
+        return self._color
 
     def get_orientation(self) -> Optional[str]:
         """
