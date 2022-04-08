@@ -1,19 +1,27 @@
-import utm
+"""
+Functions for finding the closest point within a boundary to a point outside a boundary
+"""
+
+from typing import List, Dict, Tuple
 from shapely.geometry import Point, Polygon
 from shapely.ops import nearest_points
-from typing import List, Dict, Tuple
+import utm
 
 
-def latlon_to_utm(coords: Dict) -> Dict:
+def latlon_to_utm(coords: Dict[str, float]) -> Dict[str, float]:
+    """Converts latlon coordinates to utm coordinates and adds the data to the dictionary
+
+    Parameters
+    ----------
+    coords : Dict[str, float]
+        A dictionary containing lat long coordinates
+
+    Returns
+    -------
+    Dict[str, float]
+        An updated dictionary with additional keys and values with utm data
     """
-    Converts latlon coordinates to utm coordinates and adds the data to the dictionary
 
-    Args:
-        coords (dict): A dictionary containing lat long coordinates
-
-    Returns:
-        dict: An updated dictionary with additional keys and values with utm data
-    """
     utm_coords = utm.from_latlon(coords["latitude"], coords["longitude"])
     coords["utm_x"] = utm_coords[0]
     coords["utm_y"] = utm_coords[1]
@@ -22,42 +30,77 @@ def latlon_to_utm(coords: Dict) -> Dict:
     return coords
 
 
-def all_latlon_to_utm(list_of_coords: List[Dict]) -> List[Dict]:
-    """
-    Converts a list of dictionarys with latlon data to add utm data
+def all_latlon_to_utm(list_of_coords: List[Dict[str, float]]) -> List[Dict[str, float]]:
+    """Converts a list of dictionarys with latlon data to add utm data
 
-    Args:
-        list_of_coords (list[dict]): A list of dictionaries that contain lat long data
+    Parameters
+    ----------
+    list_of_coords : List[Dict[str, float]]
+        A list of dictionaries that contain lat long data
 
-    Returns:
+    Returns
+    -------
+    List[Dict[str, float]]
         list[dict]: An updated list of dictionaries with added utm data
     """
-    for i in range(len(list_of_coords)):
+
+    for i, _ in enumerate(list_of_coords):
         list_of_coords[i] = latlon_to_utm(list_of_coords[i])
     return list_of_coords
 
 
-def scale_polygon(my_polygon, scale_factor=0.1, enlarge=False) -> Polygon:
-    xs = list(my_polygon.exterior.coords.xy[0])
-    ys = list(my_polygon.exterior.coords.xy[1])
-    x_center = 0.5 * min(xs) + 0.5 * max(xs)
-    y_center = 0.5 * min(ys) + 0.5 * max(ys)
-    min_corner = Point(min(xs), min(ys))
-    max_corner = Point(max(xs), max(ys))
+def scale_polygon(my_polygon: Polygon, scale_factor: float = 0.1) -> Polygon:
+    """Scale a shapely polygon by a percentage amount
+
+    Parameters
+    ----------
+    my_polygon : Polygon
+        Polygon that will be scaled
+    scale_factor : float, optional
+        Amount the polygon will be scaled, by default 0.1
+
+    Returns
+    -------
+    Polygon
+        Scale a shapely polygon by a percentage amount
+    """
+
+    x_s = list(my_polygon.exterior.coords.xy[0])
+    y_s = list(my_polygon.exterior.coords.xy[1])
+    x_center = 0.5 * min(x_s) + 0.5 * max(x_s)
+    y_center = 0.5 * min(y_s) + 0.5 * max(y_s)
+    min_corner = Point(min(x_s), min(y_s))
     center = Point(x_center, y_center)
     shrink_distance = center.distance(min_corner) * scale_factor
-
-    if enlarge:
-        my_polygon_resized = my_polygon.buffer(shrink_distance)  # enlarge
-    else:
-        my_polygon_resized = my_polygon.buffer(-shrink_distance)  # shrink
+    my_polygon_resized = my_polygon.buffer(-shrink_distance)
 
     return my_polygon_resized
 
 
-def find_closest_point(odlc: Dict, shrunk_boundary: List[Dict], obstacles: List[Dict]) -> Tuple:
+def find_closest_point(
+    odlc: Dict[str, float],
+    boundary_points: List[Dict[str, float]],
+    obstacles: List[Dict[str, float]],
+) -> Tuple[Dict[str, float], List[float]]:
+    """Finds the closest safe point to the ODLC while staying within the flight boundary
+
+    Parameters
+    ----------
+    odlc : Dict[str, float]
+        Point data for the ODLC object
+    boundary_points : List[Dict[str, float]]
+        Point data which makes up the flight boundary
+    obstacles : List[Dict[str, float]]
+        Point data for the obstacles
+
+    Returns
+    -------
+    Tuple[Dict[str, float], List[float]]
+        Closest safe point, and the shrunken boundary (for plotting)
+    """
+
     poly_points = []
-    for point in shrunk_boundary:
+    for point in boundary_points:
         poly_points.append((point["utm_x"], point["utm_y"]))
 
     boundary_shape = Polygon(poly_points)
@@ -65,10 +108,7 @@ def find_closest_point(odlc: Dict, shrunk_boundary: List[Dict], obstacles: List[
 
     for obstacle in obstacles:
         # create obstacle as shapely shape
-        x = obstacle["utm_x"]
-        y = obstacle["utm_y"]
-        radius = obstacle["radius"]
-        circle = Point(x, y).buffer(radius).boundary
+        circle = Point(obstacle["utm_x"], obstacle["utm_y"]).buffer(obstacle["radius"]).boundary
         obstacle_shape = Polygon(circle)
 
         # remove obstacle area from boundary polygon
@@ -77,11 +117,11 @@ def find_closest_point(odlc: Dict, shrunk_boundary: List[Dict], obstacles: List[
     # scale down boundary to add a saftey margin
     boundary_shape = scale_polygon(boundary_shape)
 
-    p1, p2 = nearest_points(
+    p_1, _ = nearest_points(
         boundary_shape, odlc_shape
     )  # point returned in same order as input shapes
 
-    closest_point = p1
+    closest_point = p_1
 
     zone_number = odlc["utm_zone_number"]
     zone_letter = odlc["utm_zone_letter"]
@@ -99,5 +139,5 @@ def find_closest_point(odlc: Dict, shrunk_boundary: List[Dict], obstacles: List[
                 1
             ],
         },
-        list(zip(*boundary_shape.exterior.coords.xy)),
+        list(zip(*boundary_shape.exterior.coords.xy)),  # pylint: disable=maybe-no-member
     )

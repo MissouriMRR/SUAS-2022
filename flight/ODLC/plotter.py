@@ -1,14 +1,34 @@
+"""
+Provides plotting functionality for visaulizing coordinate data
+"""
+
+from typing import List, Dict, Tuple
 import matplotlib.pyplot as plt
-from typing import List, Dict
 
 
 def plot_data(
-    odlc: Dict,
-    closest_point: Dict,
-    old_boundary: List[Dict],
-    new_boundary: List[Dict],
-    obstacles: List[Dict],
+    odlc: Dict[str, float],
+    closest_point: Dict[str, float],
+    old_boundary: List[Dict[str, float]],
+    new_boundary: List[Tuple[float, float]],
+    obstacles: List[Dict[str, float]],
 ) -> None:
+    """Plots the waypoints, obstacles, and flight path between waypoints
+
+    Parameters
+    ----------
+    odlc : Dict[str, float]
+        Point data for ODLC point
+    closest_point : Dict[str, float]
+        Point data for closest point to ODLC point
+    old_boundary : List[Dict[str, float]]
+        Point data for flight boundary
+    new_boundary : List[Tuple[float, float]]
+        Point data for shrunked flight boundary
+    obstacles : List[Dict[str, float]]
+        Point data for all obstacles
+    """
+
     # plot obstacles
     for obstacle in obstacles:
         x = obstacle["utm_x"]
@@ -18,18 +38,18 @@ def plot_data(
         plt.gca().add_patch(plt.Circle((x, y), radius, color="red"))
 
     # plot boundary 1
-    x1, y1 = [], []
+    x_1, y_1 = [], []
     for point in old_boundary:
-        x1.append(point["utm_x"])
-        y1.append(point["utm_y"])
-    plt.plot(x1, y1, "ro-")
+        x_1.append(point["utm_x"])
+        y_1.append(point["utm_y"])
+    plt.plot(x_1, y_1, "ro-")
 
     # plot boundary 2
-    x2, y2 = [], []
-    for point in new_boundary:
-        x2.append(point[0])
-        y2.append(point[1])
-    plt.plot(x2, y2, "bo-")
+    x_2, y_2 = [], []
+    for point2 in new_boundary:
+        x_2.append(point2[0])
+        y_2.append(point2[1])
+    plt.plot(x_2, y_2, "bo-")
 
     # plot odlc and closest point to odlc
     plt.plot(odlc["utm_x"], odlc["utm_y"], marker="*")
