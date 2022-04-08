@@ -90,8 +90,7 @@ disable=raw-checker-failed,
         deprecated-pragma,
         use-symbolic-message-instead,
         too-many-public-methods,
-        unsubscriptable-object,
-        bad-continuation
+        unsubscriptable-object
 
 # Enable the message, report, category or checker with the given id(s). You can
 # either give multiple identifier separated by comma (,) or put this option
@@ -214,7 +213,8 @@ good-names=i,
            __,
            pk,
            x,
-           y
+           y,
+	   z
 
 # Good variable names regexes, separated by a comma. If names match any regex,
 # they will always be accepted
@@ -505,10 +505,10 @@ ignored-parents=
 max-args=8
 
 # Maximum number of attributes for a class (see R0902).
-max-attributes=12
+max-attributes=10
 
 # Maximum number of boolean expressions in an if statement (see R0916).
-max-bool-expr=8
+max-bool-expr=5
 
 # Maximum number of branch for function / method body.
 max-branches=15
@@ -517,7 +517,7 @@ max-branches=15
 max-locals=20
 
 # Maximum number of parents for a class (see R0901).
-max-parents=8
+max-parents=7
 
 # Maximum number of public methods for a class (see R0904).
 max-public-methods=20
