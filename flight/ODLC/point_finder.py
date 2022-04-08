@@ -31,7 +31,7 @@ def latlon_to_utm(coords: Dict[str, float]) -> Dict[str, float]:
 
 
 def all_latlon_to_utm(list_of_coords: List[Dict[str, float]]) -> List[Dict[str, float]]:
-    """Converts a list of dictionarys with latlon data to add utm data
+    """Converts a list of dictionaries with latlon data to add utm data
 
     Parameters
     ----------
@@ -49,7 +49,7 @@ def all_latlon_to_utm(list_of_coords: List[Dict[str, float]]) -> List[Dict[str, 
     return list_of_coords
 
 
-def scale_polygon(my_polygon: Polygon, scale_factor: float = 0.1) -> Polygon:
+def scale_polygon(my_polygon: Polygon, scale_factor: float) -> Polygon:
     """Scale a shapely polygon by a percentage amount
 
     Parameters
@@ -57,7 +57,7 @@ def scale_polygon(my_polygon: Polygon, scale_factor: float = 0.1) -> Polygon:
     my_polygon : Polygon
         Polygon that will be scaled
     scale_factor : float, optional
-        Amount the polygon will be scaled, by default 0.1
+        Amount the polygon will be scaled
 
     Returns
     -------
@@ -99,9 +99,7 @@ def find_closest_point(
         Closest safe point, and the shrunken boundary (for plotting)
     """
 
-    poly_points = []
-    for point in boundary_points:
-        poly_points.append((point["utm_x"], point["utm_y"]))
+    poly_points = [(point["utm_x"], point["utm_y"]) for point in boundary_points]
 
     boundary_shape = Polygon(poly_points)
     odlc_shape = Point(odlc["utm_x"], odlc["utm_y"])
@@ -114,8 +112,8 @@ def find_closest_point(
         # remove obstacle area from boundary polygon
         boundary_shape = boundary_shape.difference(obstacle_shape)
 
-    # scale down boundary to add a saftey margin
-    boundary_shape = scale_polygon(boundary_shape)
+    # scale down boundary by 1% to add a safety margin
+    boundary_shape = scale_polygon(boundary_shape, 0.01)
 
     p_1, _ = nearest_points(
         boundary_shape, odlc_shape
