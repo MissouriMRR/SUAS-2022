@@ -2,7 +2,7 @@
 Algorithms related to detecting the text of standard objects.
 """
 
-from typing import Dict, List, Tuple, Optional
+from typing import Any, Dict, List, Tuple, Optional
 
 import cv2
 
@@ -167,7 +167,7 @@ class TextCharacteristics:
         )
 
         ## Detect Text ##
-        txt_data: Dict[str, list] = pytesseract.image_to_data(
+        txt_data: Dict[str, List[Any]] = pytesseract.image_to_data(
             output_image,
             output_type=pytesseract.Output.DICT,
             lang="eng",
