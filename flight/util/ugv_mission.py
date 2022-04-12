@@ -7,26 +7,22 @@ from mavsdk import System
 from mavsdk.mission import MissionPlan, MissionItem
 
 
-async def run() -> None:
+async def run(ugv_lat: float, ugv_lon: float) -> None:
     """
     Function to create the mission for the UGV, and upload & run on PX4
 
     Parameters
     ----------
-    N/A
+        N/A
 
     Returns
     -------
-    None: Nothing is returned
-
-    Raises
-    ------
-    No exceptions are raised
-
+        None
+            Nothing is returned
     """
     ugv: System = System()
-    ugv_lat: float = 38.146152
-    ugv_lon: float = -76.426396
+    # ugv_lat: float = 38.146152      # Latitude from Mission 1 test data
+    # ugv_lon: float = -76.426396     # Longitude from Mission 1 test data
     await ugv.connect(system_address="udp://14540")
     async for state in ugv.core.connection_state():
         if state.is_connected:
@@ -38,10 +34,10 @@ async def run() -> None:
     running_tasks: List[Task] = [print_mission_progress_task]
     termination_task: Task = asyncio.ensure_future(observe_is_in_air(ugv, running_tasks))
 
-    mission_items: List[MissionItem] = []
-    mission_items.append(MissionItem(ugv_lat, ugv_lon, 0, 10, False, float('nan'), float('nan'),
-                                     MissionItem.CameraAction.NONE,
-                                     float('nan'), float('nan'), float('nan'), float('nan'), float('nan')))
+    mission_items: List[MissionItem] = [MissionItem(ugv_lat, ugv_lon, 0, 10, False, float('nan'), float('nan'),
+                                                    MissionItem.CameraAction.NONE,
+                                                    float('nan'), float('nan'), float('nan'), float('nan'),
+                                                    float('nan'))]
     mission_plan: MissionPlan = MissionPlan(mission_items)
     await ugv.mission.set_return_to_launch_after_mission(False)
 
@@ -63,17 +59,12 @@ async def print_mission_progress(ugv: System) -> None:
 
     Parameters
     ----------
-    ugv: System
-        MAVSDK object representing the physical vehicle to control
+        ugv: System
+            MAVSDK object representing the physical vehicle to control
 
     Returns
     -------
-    None: Nothing is returned
-
-    Raises
-    ------
-    None - no exceptions are raised in the function
-
+        None
     """
     async for mission_progress in ugv.mission.mission_progress():
         print(f"Mission progress: "
@@ -87,20 +78,19 @@ async def observe_is_in_air(ugv: System, running_tasks: List[Task]) -> None:
 
     Parameters
     ----------
-    ugv: System
-        MAVSDK object for the physical movement of the UGV
-    running_tasks: List[Task]
-        Structure of tasks for UGV to perform
+        ugv: System
+            MAVSDK object for the physical movement of the UGV
+        running_tasks: List[Task]
+            Structure of tasks for UGV to perform
 
     Returns
     -------
-    None: nothing is returned
+        None
 
     Raises
     ------
-    asyncio.CancelledError
-        UGV fails to cancel a task due to a hardware issue
-
+        asyncio.CancelledError
+            UGV fails to cancel a task due to a hardware issue
     """
 
     was_in_air: bool = False
