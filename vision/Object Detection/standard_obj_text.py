@@ -46,6 +46,11 @@ class TextCharacteristics:
     """
     Class for detecting characteristics of text on standard objects.
     Characteristics are of the character, orientation, and color.
+
+    Parameters
+    ----------
+    _img : Optional[npt.NDArray[np.uint8]]
+        the image to find characteristics within
     """
 
     def __init__(self, img: Optional[npt.NDArray[np.uint8]] = None) -> None:
@@ -120,6 +125,7 @@ class TextCharacteristics:
     ) -> Tuple[Optional[str], Optional[str], Optional[str]]:
         """
         Gets the characteristics of the text on the standard object.
+        The characteristics are character, orientation, and color.
         NOTE: Need to set image before calling.
 
         Parameters
@@ -138,7 +144,7 @@ class TextCharacteristics:
         """
         ## Get the character ##
         characters: List[Tuple[str, BoundingBox]] = self.detect_text(bounds)
-        if len(characters) != 1:
+        if len(characters) != 1:  # failed if more than 1 character found
             return (None, None, None)
         character: str
         char_bounds: BoundingBox
