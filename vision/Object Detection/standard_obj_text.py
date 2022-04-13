@@ -116,7 +116,7 @@ class TextCharacteristics:
         self._rotated_img = image
 
     def get_text_characteristics(
-        self, bounds: BoundingBox
+        self, bounds: BoundingBox, drone_degree: float
     ) -> Tuple[Optional[str], Optional[str], Optional[str]]:
         """
         Gets the characteristics of the text on the standard object.
@@ -126,6 +126,8 @@ class TextCharacteristics:
         ----------
         bounds : BoundingBox
             bounds of standard object containing text on in image
+        drone_degree : float
+            rotation angle of the drone relative to north
 
         Returns
         -------
@@ -143,9 +145,9 @@ class TextCharacteristics:
         character, char_bounds = characters[0]
 
         ## Get the orientation ##
-        # NOTE: Not implemented
-        # orientation: Optional[str] = self._get_orientation()
-        orientation: Optional[str] = "N"
+        orientation: Optional[str] = self.get_orientation(
+            drone_degree=drone_degree, obj_bounds=bounds, char_bounds=char_bounds
+        )
 
         ## Get the color of the text ##
         color: Optional[str] = self.get_text_color(char_bounds)
@@ -560,16 +562,19 @@ if __name__ == "__main__":
         ((77, 184), (3, 91), (120, 0), (194, 82)), ObjectType.STD_OBJECT
     )
 
+    # angle of the drone, 0 for testing
+    DRONE_ANGLE = 0
+
     detector: TextCharacteristics = TextCharacteristics()
     detector.img = test_img
     detected_chars: Tuple[
         Optional[str], Optional[str], Optional[str]
-    ] = detector.get_text_characteristics(test_bounds)
+    ] = detector.get_text_characteristics(test_bounds, DRONE_ANGLE)
 
     # Code for testing orientation
-    # drone_angle = 0
+    # DRONE_ANGLE = 0
     # odlc_bounds = BoundingBox(((0, 0), (100, 0), (100, 100), (0, 100)), obj_type=ObjectType.TEXT)
     # text_bounds = BoundingBox(((0, 0), (10, 0), (10, 10), (0, 10)), obj_type=ObjectType.TEXT)
-    # print(detector.get_orientation(drone_angle, odlc_bounds, text_bounds))
+    # print(detector.get_orientation(DRONE_ANGLE, odlc_bounds, text_bounds))
 
     print("The following character was found in the image:", detected_chars)
