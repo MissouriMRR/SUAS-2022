@@ -1,4 +1,5 @@
 #!/user/bin/python
+
 import math, time
 import numpy as np
 from typing import Tuple, List
@@ -24,9 +25,32 @@ NW: float = 5.585054
 # ------ GLOBAL VARIABLES ------ #
 
 def map(info: Tuple[Tuple[float, float], float], 
-altitude: int = 400, 
+altitude: int = 750, 
 focal_length: float = 4.9,
 ) -> List[Tuple[float, float]]:
+    """
+    Calculates the map area, cuts map area into sections, 
+    then creates flight path for drone through sections.
+
+    Parameters
+    ----------
+    info: Tuple[Tuple[float, float], float]
+        The center location in latitude, longitude of the map, and then height of the map
+    altitude: int
+    focal_length: float
+
+    Returns
+    -------
+    path: List[Tuple[float, float]]
+        The path that the drone will take through the map
+
+    Notes
+    -----
+    fov is the Field of View of the image area
+    fovH is the horizontal field of view distance
+    fovV is the vertical field of view distance
+    """
+
     # Takes in tuple(start location, map height), altitude, and focal_length]
     # Assumes altitude and focal_length doesn't change
     # Returns flight path of drone to snap images of map
@@ -36,18 +60,7 @@ focal_length: float = 4.9,
     map_h: float = info[1]
 
     # Calculate the width and height of camera image
-    fov: float = 2 * math.atan((SENSOR_W / (2 * focal_length)))
-    print("FOV:", fov)
-
-    fovH: float = SENSOR_W / SENSOR_D * fov
-    fovV: float = SENSOR_H / SENSOR_D * fov
-
-    print("fovH:", fovH)
-    print("fovV:", fovV)
-
-    cam_w: float = 2 * altitude * math.tan(fovH / 2)
-    cam_h: float = 2 * altitude * math.tan(fovV / 2)
-
+    cam_w, cam_h = image_area(altitude, focal_length)
     print("Camera Width:", cam_w)
     print("Camera Height:", cam_h)
 
@@ -68,6 +81,21 @@ focal_length: float = 4.9,
 
     # Flight path algorithm
     pass
+
+def image_area(altitude: int, focal_length: float) -> Tuple[float, float]:
+    fov: float = 2 * math.atan((SENSOR_W / (2 * focal_length)))
+    print("FOV:", fov)
+
+    fovH: float = SENSOR_W / SENSOR_D * fov
+    fovV: float = SENSOR_H / SENSOR_D * fov
+
+    print("fovH:", fovH)
+    print("fovV:", fovV)
+
+    cam_w: float = 2 * altitude * math.tan(fovH / 2)
+    cam_h: float = 2 * altitude * math.tan(fovV / 2)
+
+    return (cam_w, cam_h)
 
 def find_centers(map_w: float, map_h: float, 
 cam_w: float, cam_h: float, overlap: float,
