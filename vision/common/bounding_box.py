@@ -204,7 +204,11 @@ class BoundingBox:
         tl_y: int = self.vertices[0][1]
         tr_y: int = self.vertices[1][1]
 
-        angle: float = np.rad2deg(np.arctan((tr_y - tl_y) / (tr_x - tl_x)))
+        angle: float = 0
+        if tr_x - tl_x == 0:  # prevent division by 0
+            angle = 90.0 if (tr_y - tl_y > 0) else -90.0
+        else:
+            angle = np.rad2deg(np.arctan((tr_y - tl_y) / (tr_x - tl_x)))
 
         return angle
 
