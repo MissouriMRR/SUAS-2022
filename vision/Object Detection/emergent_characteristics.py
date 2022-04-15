@@ -42,7 +42,7 @@ def save_emg_img(img: npt.NDArray[np.uint8]) -> None:
     cv2.imwrite(filename=img_file, img=img)
 
     # Create the description file
-    with open(description_file, "w", encoding="utf-8") as file:
+    with open(description_file, mode="w", encoding="utf-8") as file:
         file.write("Provide a single-line description of the emergent object on the line below:\n")
 
 
@@ -55,7 +55,21 @@ def get_emg_description() -> str:
     description - str
         a description of the emergent object
     """
-    raise NotImplementedError("get_emg_description() is not yet implemented")
+    # Find the paths
+    path: pathlib.Path = pathlib.Path().resolve()
+    description_file: str = os.path.join(path, EMG_OBJECT_OUT_FOLDER, EMG_TEXT_FILE_NAME)
+
+    # description of the emergent object provided by the user
+    description: str = ""
+
+    # Get the description from the file
+    with open(description_file, mode="r", encoding="utf-8") as file:
+        i = 0
+        for line in file:  # avoid file size errors
+            if i == 1:  # only accept single line description
+                description = line
+            i += 1
+    return description
 
 
 # Driver for testing emergent object functions
