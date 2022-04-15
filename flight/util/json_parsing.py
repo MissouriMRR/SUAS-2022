@@ -4,11 +4,22 @@ import json
 
 
 def waypoint_parsing(filename: str) -> List[Dict[str, float]]:
-    """Accepts name of JSON file and extracts waypoint data for SUAS mission
-    Args:
-        filename: str - String of data file to open and access waypoint data
-    Returns:
-        List - List of dictionaries containing latitude, longitude and altitude of each waypoint in mission
+    """
+    Accepts name of JSON file and extracts waypoint data for SUAS mission
+    Parameters
+    ---------
+    filename: str
+        String of data file to open and access waypoint data
+    Returns
+    -------
+    List[Dict[str, float]]
+        List of dictionaries containing latitude, longitude and altitude of each waypoint in mission
+        Dict[str, float]
+                dictionary containing specific coordinate or attribute with string label
+    Raises
+    ------
+    General Exception
+        Designed to catch any error that could arise and prevent corruption
     """
     with open(filename) as f:
         try:
@@ -23,11 +34,22 @@ def waypoint_parsing(filename: str) -> List[Dict[str, float]]:
 
 
 def stationary_obstacle_parsing(filename: str) -> List[Dict[str, float]]:
-    """Opens passed JSON file and extracts the Stationary obstacle attributes
-    Args:
-        filename: str - String of JSON file name and file type
-    Returns:
-        List - list of dictionaries containing latitude, longitude, radius, and height of obstacles
+    """
+    Opens passed JSON file and extracts the Stationary obstacle attributes
+    Parameters
+    ----------
+    filename: str
+        String of JSON file name and file type
+    Returns
+    -------
+        stationary_obs: List[Dict[str, float]]
+            list of dictionaries containing latitude, longitude, radius, and height of obstacles
+            Dict[str, float]
+                dictionary containing specific coordinate or attribute with string label
+    Raises
+    ------
+    General Exception
+        Broad exception to catch any error and prevent corruption
     """
     with open(filename) as f:
         try:
