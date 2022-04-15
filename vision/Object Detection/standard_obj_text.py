@@ -134,6 +134,7 @@ class TextCharacteristics:
             bounds of standard object containing text on in image
         drone_degree : float
             rotation angle of the drone relative to north
+            this is the yaw degree
 
         Returns
         -------
@@ -506,6 +507,7 @@ class TextCharacteristics:
         ----------
         drone_degree : float
             rotation angle of the drone relative to north
+            this is the yaw degree
         obj_bounds : BoundingBox
             bounds of the standard object on which the text is contained
         char_bounds : BoundingBox
@@ -533,9 +535,9 @@ class TextCharacteristics:
 
         # get which range angle falls into
         octant: int = int(total_angle // dir_width)
-        orientation = POSSIBLE_ORIENTATIONS[octant]
+        self.orientation = POSSIBLE_ORIENTATIONS[octant]
 
-        return orientation
+        return self.orientation
 
 
 # Driver for testing text detection and classification functions.
