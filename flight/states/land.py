@@ -9,28 +9,16 @@ from states.final_state import Final
 class Land(State):
     """
     State to land the drone safely after finishing other flight & vision tasks
-
-    Attributes
-    ----------
-        N/A
-
-    Methods
-    -------
-        run() -> Final
-            Running the landing procedure after returning to home
+    Functions:
+        run() -> Final: Running the landing procedure after returning to home
+    Member Variables:
+        None
     """
     async def run(self, drone: System) -> Final:
-        """
-        Run landing function to have drone slowly return to home position
-
-        Parameters
-        ----------
-            drone: System
-                MAVSDK drone object for direct drone control
-
-        Returns
-        -------
-            Final : State
-                final state for ending state machine
+        """Run landing function to have drone slowly return to home position
+        Args:
+            drone: System - MAVSDK drone object for direct drone control
+        Returns:
+            Final: final state for ending state machine
         """
         return Final(self.state_settings)

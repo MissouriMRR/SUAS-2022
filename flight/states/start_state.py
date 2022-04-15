@@ -7,31 +7,17 @@ from states.pre_processing import PreProcess
 
 
 class Start(State):
-    """
-    Preliminary state, proceed state machine into pre-processing
-
-    Attributes
-    ----------
-        N/A
-
-    Methods
-    -------
-        begin() -> PreProcess
-            Beginning function to start state machine, proceeding to pre-processing step
-
+    """Preliminary state, proceed state machine into pre-processing
+    Functions:
+        begin() -> PreProcess: beginning function to start state machine, proceeding to pre-processing step
+    Member Variables:
+        None
     """
     async def begin(self, drone: System) -> PreProcess:
-        """
-        Initialization function to start flight state machine
-
-        Parameters
-        ----------
-            drone: System
-                drone object for directv drone control
-
-        Returns
-        -------
-            PreProcess : State
-                data pre-processing state, to advance state machine
+        """Initialization function to start flight state machine
+        Args:
+            drone: System - drone object for directv drone control
+        Returns:
+            PreProcess: data pre-processing state, to advance state machine
         """
         return PreProcess(self.state_settings)

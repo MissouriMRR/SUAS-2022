@@ -7,68 +7,40 @@ from ..state_settings import StateSettings
 class State:
     """
     Base State class
-
-    Attributes
-    ----------
-        drone (System)
-            The drone object; used for flight.
-
-    Methods
-    -------
-        run() -> None
-            Performs all movement operations contained within the state
-        _check_arm_or_arm() -> None
-            Determines if drone is armed, and if not, arms it.
-
+    Functions:
+        run() -> (State, None): Runs the code present in each state and returns the next state, or None if at the
+                                end of the machine
+        _check_arm_or_arm() -> None: Determines if drone is armed, and if not, arms it.
+    Member Variables:
+        drone (System): The drone object; used for flight.
     """
 
     def __init__(self, state_settings: StateSettings) -> None:
-        """
-        Initializes base State class using a StateSettings class
-
-        Parameters
-        ----------
-            state_settings: StateSettings
-                class which contains basic competition data
-
-        Returns
-        -------
+        """ Initializes base State class using a StateSettings class
+        Args:
+            state_settings: StateSettings - class which contains basic competition data
+        Returns:
             None
         """
         logging.info('State "%s" has begun', self.name)
         self.state_settings: StateSettings = state_settings
 
     async def run(self, drone: System) -> None:
-        """
-        Runs the functions and code present in state for competition goals
-
-        Parameters
-        ----------
-            drone: System
-                drone object for MAVSDK control
-
-        Returns
-        -------
+        """ Runs the functions and code present in state for competition goals
+        Args:
+            drone: System - drone object for MAVSDK control
+        Returns:
             None
-
-        Raises
-        ------
-            General
-                raises if no code is present in run function
+        Exception:
+            General: raises if no code is present in run function
         """
         raise Exception("Run not implemented for state")
 
     async def _check_arm_or_arm(self, drone: System) -> None:
-        """
-        Verifies that the drone is armed, if not armed, arms the drone
-
-        Parameters
-        ----------
-            drone: System
-                The drone system; used for flight operations.
-
-        Returns
-        -------
+        """ Verifies that the drone is armed, if not armed, arms the drone
+        Args:
+            drone: System - The drone system; used for flight operations.
+        Returns:
             None
         """
         async for is_armed in drone.telemetry.armed():
@@ -81,15 +53,10 @@ class State:
 
     @property
     def name(self):
-        """
-        Getter function to return the name of the class
-
-        Parameters
-        ----------
+        """ Getter function to return the name of the class
+        Args:
             N/A
-
-        Returns
-        -------
+        Returns:
             Name property of current state class
         """
         return type(self).__name__
