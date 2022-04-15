@@ -30,11 +30,27 @@ POSSIBLE_COLORS: Dict[str, npt.NDArray[np.int64]] = {
     "ORANGE": np.array([[24, 255, 255], [10, 50, 70]]),
 }
 
+POSSIBLE_ORIENTATIONS: List[str] = [
+    "N",
+    "NE",
+    "E",
+    "SE",
+    "S",
+    "SW",
+    "W",
+    "NW",
+]
+
 
 class TextCharacteristics:
     """
     Class for detecting characteristics of text on standard objects.
     Characteristics are of the character, orientation, and color.
+
+    Parameters
+    ----------
+    _img : Optional[npt.NDArray[np.uint8]]
+        the image to find characteristics within
     """
 
     def __init__(self, img: Optional[npt.NDArray[np.uint8]] = None) -> None:
@@ -53,8 +69,7 @@ class TextCharacteristics:
         self._color: Optional[str] = None
 
         # related to text orientation
-        # NOTE: not implemented
-        # self.orientation: Optional[str] = None
+        self.orientation: Optional[str] = None
 
     @property
     def img(self) -> npt.NDArray[np.uint8]:
@@ -106,16 +121,19 @@ class TextCharacteristics:
         self._rotated_img = image
 
     def get_text_characteristics(
-        self, bounds: BoundingBox
+        self, bounds: BoundingBox, drone_degree: float
     ) -> Tuple[Optional[str], Optional[str], Optional[str]]:
         """
         Gets the characteristics of the text on the standard object.
+        The characteristics are character, orientation, and color.
         NOTE: Need to set image before calling.
 
         Parameters
         ----------
         bounds : BoundingBox
             bounds of standard object containing text on in image
+        drone_degree : float
+            rotation angle of the drone relative to north
 
         Returns
         -------
@@ -126,16 +144,16 @@ class TextCharacteristics:
         """
         ## Get the character ##
         characters: List[Tuple[str, BoundingBox]] = self.detect_text(bounds)
-        if len(characters) != 1:
+        if len(characters) != 1:  # failed if more than 1 character found
             return (None, None, None)
         character: str
         char_bounds: BoundingBox
         character, char_bounds = characters[0]
 
         ## Get the orientation ##
-        # NOTE: Not implemented
-        # orientation: Optional[str] = self._get_orientation()
-        orientation: Optional[str] = "N"
+        orientation: Optional[str] = self.get_orientation(
+            drone_degree=drone_degree, obj_bounds=bounds, char_bounds=char_bounds
+        )
 
         ## Get the color of the text ##
         color: Optional[str] = self.get_text_color(char_bounds)
@@ -478,12 +496,46 @@ class TextCharacteristics:
 
         return self._color
 
-    def get_orientation(self) -> Optional[str]:
+    def get_orientation(
+        self, drone_degree: float, obj_bounds: BoundingBox, char_bounds: BoundingBox
+    ) -> Optional[str]:
         """
         Get the orientation of the text.
-        NOTE: Not yet implemeneted.
+
+        Parameters
+        ----------
+        drone_degree : float
+            rotation angle of the drone relative to north
+        obj_bounds : BoundingBox
+            bounds of the standard object on which the text is contained
+        char_bounds : BoundingBox
+            bounds of the text on the cropped standard object
+
+        Returns
+        -------
+        orientation : Optional[str]
+            the Cardinal/Intermediate direction as a 1 or 2 letter string
         """
-        raise NotImplementedError("Orientation not implemented.")
+        dir_width: float = 45.0  # width of each orientation's range
+
+        self.orientation = None
+
+        # angle from the x-axis (east)
+        total_angle: float = obj_bounds.get_rotation_angle() + char_bounds.get_rotation_angle()
+
+        # add drone angle
+        total_angle += drone_degree
+
+        # account for north wrapping around
+        total_angle += dir_width / 2
+        if total_angle >= 360:
+            total_angle -= 360
+
+        # get which range angle falls into
+        octant: int = int(total_angle // dir_width)
+        orientation = POSSIBLE_ORIENTATIONS[octant]
+
+        return orientation
 
 
 # Driver for testing text detection and classification functions.
@@ -516,10 +568,19 @@ if __name__ == "__main__":
         ((77, 184), (3, 91), (120, 0), (194, 82)), ObjectType.STD_OBJECT
     )
 
+    # angle of the drone, 0 for testing
+    DRONE_ANGLE = 0
+
     detector: TextCharacteristics = TextCharacteristics()
     detector.img = test_img
     detected_chars: Tuple[
         Optional[str], Optional[str], Optional[str]
-    ] = detector.get_text_characteristics(test_bounds)
+    ] = detector.get_text_characteristics(test_bounds, DRONE_ANGLE)
+
+    # Code for testing orientation
+    # DRONE_ANGLE = 0
+    # odlc_bounds = BoundingBox(((0, 0), (100, 0), (100, 100), (0, 100)), obj_type=ObjectType.TEXT)
+    # text_bounds = BoundingBox(((0, 0), (10, 0), (10, 10), (0, 10)), obj_type=ObjectType.TEXT)
+    # print(detector.get_orientation(DRONE_ANGLE, odlc_bounds, text_bounds))
 
     print("The following character was found in the image:", detected_chars)
