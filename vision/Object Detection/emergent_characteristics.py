@@ -12,9 +12,10 @@ import numpy as np
 import numpy.typing as npt
 
 
-EMG_OBJECT_OUT_FOLDER = "emg_object"
-EMG_IMG_FILE_NAME = "emg_object_img.jpg"
-EMG_TEXT_FILE_NAME = "emg_object_description.txt"
+# File name constants
+EMG_OBJECT_OUT_FOLDER: str = "emg_object"
+EMG_IMG_FILE_NAME: str = "emg_object_img.jpg"
+EMG_TEXT_FILE_NAME: str = "emg_object_description.txt"
 
 
 def save_emg_img(img: npt.NDArray[np.uint8]) -> None:
@@ -74,5 +75,34 @@ def get_emg_description() -> str:
 
 # Driver for testing emergent object functions
 if __name__ == "__main__":
-    IMG_NAME = "test_img.jpg"
-    print(IMG_NAME)
+    import argparse
+
+    parser: argparse.ArgumentParser = argparse.ArgumentParser(
+        description="Runs emergent object characteristics algorithms. Must specify a file."
+    )
+
+    parser.add_argument(
+        "-f",
+        "--file_name",
+        type=str,
+        help="Filename of the image to run on. Required argument.",
+    )
+
+    args: argparse.Namespace = parser.parse_args()
+
+    # no file name specified, cannot continue
+    if not args.file_name:
+        raise RuntimeError("No file specified.")
+    file_name: str = args.file_name
+
+    # Read in the image
+    test_img: npt.NDArray[np.uint8] = cv2.imread(file_name)
+
+    # Save image and create text file
+    save_emg_img(test_img)
+
+    # Wait until user adds description to text file
+    input("Press enter once description has been added")
+
+    # Read description of emergent object from text file
+    print("Descrtiption:", get_emg_description())
