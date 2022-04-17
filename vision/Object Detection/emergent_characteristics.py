@@ -23,6 +23,12 @@ def save_emg_img(img: npt.NDArray[np.uint8]) -> None:
     Save the image of the emergent object and create a text file for
     the user to add a description.
 
+    NOTE: The emergent object image and description file will be saved in a new
+    folder in the directory files are run from.
+
+    NOTE: Image and description files will be overwritten if this function is
+    called more than once.
+
     Parameters
     ----------
     img - npt.NDArray[np.uint8]
@@ -35,7 +41,6 @@ def save_emg_img(img: npt.NDArray[np.uint8]) -> None:
     description_file: str = os.path.join(output_folder, EMG_TEXT_FILE_NAME)
 
     # Create the output folder if necessary
-    ## NOTE: handle if img/txt files exist already?
     if not os.path.exists(output_folder):
         os.mkdir(output_folder)
 
@@ -49,7 +54,8 @@ def save_emg_img(img: npt.NDArray[np.uint8]) -> None:
 
 def get_emg_description() -> str:
     """
-    Reads the description of the emergent object from the text file.
+    Reads the description of the emergent object from the text file. Only reads the
+    second line of the file to get the description.
 
     Returns
     -------
