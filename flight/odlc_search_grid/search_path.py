@@ -1,11 +1,9 @@
 """
-Functions for generating a search path for standard odlc objects
+Functions for generating search paths to cover an area for finding the standard odlc objects
 """
 
 from typing import List, Dict, Tuple
-
-from shapely.geometry import Point, Polygon
-from shapely.ops import nearest_points
+from shapely.geometry import Polygon
 import utm
 
 
@@ -50,23 +48,39 @@ def all_latlon_to_utm(list_of_coords: List[Dict[str, float]]) -> List[Dict[str, 
     return list_of_coords
 
 
-# use height/2 of camera image as buffer distance
-def generate_search_path(search_area_points, buffer_distance):
-    poly_points = [(point["utm_x"], point["utm_y"]) for point in search_area_points]
+def generate_search_paths(
+    search_area_points: List[Dict[str, float]], buffer_distance: int
+) -> List[Tuple[float, float]]:
+    """Generates a list of search paths of increasingly smaller sizes until the whole area
+    of the original shape has been covered
 
+    Parameters
+    ----------
+    search_area_points : Dict[str, float]
+        A list of coordinates in dictionary form that contain utm coordinate data
+    buffer_distance : int
+        The distance that each search path will be apart from the previous one.
+        For complete photographic coverage of the area, this should be equal to half the height
+        of the area the camera covers on the ground given the current altitude.
+
+    Returns
+    -------
+    List[Tuple[float, float]]
+        A list of concentric search paths that cover the area of the polygon
+    """
+
+    # convert to shapely polygon for buffer operations
+    poly_points = [(point["utm_x"], point["utm_y"]) for point in search_area_points]
     boundary_shape = Polygon(poly_points)
 
     search_paths = []
-    search_paths.append(
-        list(zip(*boundary_shape.exterior.coords.xy))  # pylint: disable=maybe-no-member
-    )
 
-    while True:
-        boundary_shape = boundary_shape.buffer(buffer_distance, single_sided=True)
-        if boundary_shape.area <= 0:
-            break
+    # shrink boundary by a fixed amount until the area it covers is 0
+    # add the smaller boundary to our list of search paths on each iteration
+    while boundary_shape.area > 0:
         search_paths.append(
-            list(zip(*boundary_shape.exterior.coords.xy))  # pylint: disable=maybe-no-member
+            tuple(zip(*boundary_shape.exterior.coords.xy))  # pylint: disable=maybe-no-member
         )
+        boundary_shape = boundary_shape.buffer(buffer_distance, single_sided=True)
 
     return search_paths

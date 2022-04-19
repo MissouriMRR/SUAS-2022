@@ -1,3 +1,7 @@
+"""
+Sample runner to test the search paths feature
+"""
+
 import plotter
 import search_path
 
@@ -25,8 +29,13 @@ if __name__ == "__main__":
     search_area_points = search_path.all_latlon_to_utm(search_area_points)
 
     # Generate search path
-    buffer_distance = -50
-    search_paths = search_path.generate_search_path(search_area_points, buffer_distance)
+    BUFFER_DISTANCE = -50  # use height/2 of camera image as buffer distance
+    search_paths = search_path.generate_search_paths(search_area_points, BUFFER_DISTANCE)
+
+    # fly all points in search_paths[0],
+    # when you reach your starting point,
+    # fly all points in search_paths[1],
+    # etc... until all search paths have been flown
 
     # Plot data
     plotter.plot_data(search_paths)

@@ -2,11 +2,19 @@
 Provides plotting functionality for visualizing coordinate data
 """
 
-from typing import List, Dict, Tuple
+from typing import List, Tuple
 import matplotlib.pyplot as plt
 
 
-def plot_data(search_paths) -> None:
+def plot_data(search_paths: List[List[Tuple[float, float]]]) -> None:
+    """Simple plotter function to plot the search paths
+
+    Parameters
+    ----------
+    search_paths : List[Tuple[float, float]]
+        A list of search paths to be plotted
+    """
+
     for path in search_paths:
         x, y = [], []
         for point in path:
