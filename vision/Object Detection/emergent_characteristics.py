@@ -36,7 +36,7 @@ def save_emg_img(img: npt.NDArray[np.uint8]) -> None:
     """
     # Find the paths
     path: pathlib.Path = pathlib.Path().resolve()
-    output_folder = os.path.join(path, EMG_OBJECT_OUT_FOLDER)
+    output_folder: str = os.path.join(path, EMG_OBJECT_OUT_FOLDER)
     img_file: str = os.path.join(output_folder, EMG_IMG_FILE_NAME)
     description_file: str = os.path.join(output_folder, EMG_TEXT_FILE_NAME)
 
@@ -111,4 +111,4 @@ if __name__ == "__main__":
     input("Press enter once description has been added")
 
     # Read description of emergent object from text file
-    print("Descrtiption:", get_emg_description())
+    print("Description:", get_emg_description())
