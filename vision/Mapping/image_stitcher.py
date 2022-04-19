@@ -2,6 +2,8 @@
 Algorithms related to stitching images.
 """
 
+# pylint: disable=W0511
+
 import os
 import argparse
 from typing import List, Tuple
@@ -240,6 +242,13 @@ class Stitcher:
         (x, y, width, height) = cv2.boundingRect(con)
 
         self.final_image = stitched[y : y + height, x : x + width]
+
+    def template_match(self) -> None:
+        """
+        Mathes the center image with the final image to get center coordinate.
+        NOTE: Not yet implemeneted.
+        """
+        raise NotImplementedError("Function not Implemented")
 
     def crop_ratio(self) -> None:
         """
