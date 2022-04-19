@@ -15,16 +15,21 @@ import cv2
 class Stitcher:
     """
     Class for stitching images together and formatting them into competition standards.
-    Standards include: no black borders, 16:9 aspect ratio, and WGS84 projection.
+    Standards include: no black borders, 16:9 aspect ratio, and WGS84 projection, and
+    template matching.
+
+    Parameters
+    ----------
+    image_path: str
+        Folder path for images needed to be stitched
+    center_image: npt.NDArray[np.uint8]
+        Image that should be the center of the competition area
     """
 
     def __init__(self) -> None:
-        self.final_image: npt.NDArray[np.uint8] = np.array([])
-        self.color_images: List[npt.NDArray[np.uint8]] = []
         self.image_path: str = ""
-        self.matches: npt.NDArray[np.float64] = np.array([])
+
         self.center_image: npt.NDArray[np.uint8] = np.array([])
-        self.black_pixels: int = 0
 
     def multiple_image_stitch(self) -> npt.NDArray[np.uint8]:
         """
@@ -33,29 +38,31 @@ class Stitcher:
         -------
         npt.NDArray[np.uint8]
             Final stitched image
+        Raise
+        -------
+        IndexError
+            Flags if there are no images in directory.
         """
-        # Make a list of all images in directory
-        list_paths: List[str] = []
-        for file in os.listdir(self.image_path):
-            if file.endswith(".JPG") or file.endswith(".jpg"):
-                list_paths.append(os.path.join(self.image_path, file))
 
-        if len(list_paths) <= 1:
+        if not os.listdir(self.image_path):
             raise IndexError("Not Enough Images in Directory")
 
-        # Read the images and appends them into a list and count black pixels
-        for img in list_paths:
-            color_img: np.ndarray = cv2.imread(img)
-            self.color_images.append(color_img)
-            self.black_pixels += (color_img == (0, 0, 0)).all(axis=-1).sum()
+        # Make a list of all images in directory and counts black pixels
+        color_images: List[npt.NDArray[np.uint8]] = []
+        black_pixels: int = 0
+        for file in os.listdir(self.image_path):
+            if file.endswith(".JPG") or file.endswith(".jpg"):
+                c_img: npt.NDArray[np.uint8] = cv2.imread(os.path.join(self.image_path, file))
+                color_images.append(c_img)
+                black_pixels += (c_img == (0, 0, 0)).all(axis=-1).sum()
 
         # Set the first image as final_image so it can run in a loop
-        self.final_image = self.color_images[0]
+        final_image: npt.NDArray[np.uint8] = color_images[0]
 
         # Loop through all images in images list
-        for i in range(1, len(self.color_images)):
-            self.get_matches(self.final_image, self.color_images[i])
-            self.warp_images(self.color_images[i], self.final_image, self.matches)
+        for i in range(1, len(color_images)):
+            matches: npt.NDArray[np.float64] = self.get_matches(final_image, color_images[i])
+            final_image = self.warp_images(color_images[i], final_image, matches)
 
             ## Debug Code: Shows each iteration and which iteration stitcher is on
             # print("Iteration:", i)
@@ -63,11 +70,14 @@ class Stitcher:
             # cv2.waitKey(0)
 
         # Crop final image of black space
-        self.crop_space(self.final_image)
+        final_image = self.crop_space(final_image, black_pixels)
 
-        return self.final_image
+        return final_image
 
-    def get_matches(self, img_1: npt.NDArray[np.uint8], img_2: npt.NDArray[np.uint8]) -> None:
+    @classmethod
+    def get_matches(
+        cls, img_1: npt.NDArray[np.uint8], img_2: npt.NDArray[np.uint8]
+    ) -> npt.NDArray[np.float64]:
         """
         Finds matches between two grey images and establish a homography graph to warp two images.
         Parameters
@@ -76,16 +86,29 @@ class Stitcher:
             first image
         img_2 : npt.NDArray[np.uint8]
             second image
+        Returns
+        ----------
+        npt.NDArray[np.float64]
+            Matches between two images
+        Raise
+        ----------
+        cv2.error
+            Flags if there is not enough matches between images.
         """
 
         # Get a greyscale version of images
-        grey_img_1: np.ndarray = cv2.cvtColor(img_1, cv2.COLOR_BGR2GRAY)
-        grey_img_2: np.ndarray = cv2.cvtColor(img_2, cv2.COLOR_BGR2GRAY)
+        grey_img_1: npt.NDArray[np.uint8] = cv2.cvtColor(img_1, cv2.COLOR_BGR2GRAY)
+        grey_img_2: npt.NDArray[np.uint8] = cv2.cvtColor(img_2, cv2.COLOR_BGR2GRAY)
 
         # Create ORB detector to detect keypoints and descriptors
         orb: cv2.ORB = cv2.ORB_create(nfeatures=2000)
 
         # Find the key points and descriptors with ORB
+        keypoints1: cv2.KeyPoint
+        keypoints2: cv2.KeyPoint
+        descriptors1: npt.NDArray[np.uint8]
+        descriptors2: npt.NDArray[np.uint8]
+
         keypoints1, descriptors1 = orb.detectAndCompute(grey_img_1, None)
         keypoints2, descriptors2 = orb.detectAndCompute(grey_img_2, None)
 
@@ -101,7 +124,7 @@ class Stitcher:
             all_matches.append(match_0)
 
         # Finding the best matches
-        good: List[cv2.Dmatch] = []
+        good: List[cv2.DMatch] = []
         for match_0, match_1 in matches:
             if match_0.distance < 0.6 * match_1.distance:
                 good.append(match_0)
@@ -124,17 +147,19 @@ class Stitcher:
         else:
             raise cv2.error("Not Enough Matches")
 
-        self.matches = matches
+        return matches
 
+    @classmethod
     def warp_images(
-        self,
+        cls,
         img_1: npt.NDArray[np.uint8],
         img_2: npt.NDArray[np.uint8],
         map_0: npt.NDArray[np.float64],
-    ) -> None:
+    ) -> npt.NDArray[np.uint8]:
         """
         Warps the perspective of the images based on the homography map and
         stitches the images together based off of the points.
+        Parameters
         ----------
         img_1 : npt.NDArray[np.uint8]
             first image
@@ -142,7 +167,17 @@ class Stitcher:
             second image
         map_0 : npt.NDArray[np.float64]
             Homography map with relation points
+        Returns
+        ----------
+        npt.NDArray[np.uint8]
+            Stitched image
         """
+
+        rows1: int
+        cols1: int
+        rows2: int
+        cols2: int
+
         rows1, cols1 = img_1.shape[:2]
         rows2, cols2 = img_2.shape[:2]
 
@@ -161,45 +196,44 @@ class Stitcher:
             (list_of_points_1, list_of_points_2), axis=0
         )
 
-        x_min: npt.NDArray[np.int32] = np.array(
-            (list_of_points.min(axis=0).ravel() - 0.5)[0], dtype=np.int32
-        )
-        y_min: npt.NDArray[np.int32] = np.array(
-            (list_of_points.min(axis=0).ravel() - 0.5)[1], dtype=np.int32
-        )
-        x_max: npt.NDArray[np.int32] = np.array(
-            (list_of_points.max(axis=0).ravel() + 0.5)[0], dtype=np.int32
-        )
-        y_max: npt.NDArray[np.int32] = np.array(
-            (list_of_points.max(axis=0).ravel() + 0.5)[1], dtype=np.int32
-        )
+        m_points_max: npt.NDArray[np.float32] = list_of_points.max(axis=0).ravel()
+        m_points_min: npt.NDArray[np.float32] = list_of_points.min(axis=0).ravel()
 
-        translation_dist: List[np.int32] = [-x_min, -y_min]
+        x_min: npt.NDArray[np.int32] = np.array((m_points_min - 0.5)[0], dtype=np.int32)
+        y_min: npt.NDArray[np.int32] = np.array((m_points_min - 0.5)[1], dtype=np.int32)
+        x_max: npt.NDArray[np.int32] = np.array((m_points_max + 0.5)[0], dtype=np.int32)
+        y_max: npt.NDArray[np.int32] = np.array((m_points_max + 0.5)[1], dtype=np.int32)
 
-        h_translation: npt.NDArray[np.int32] = np.array(
-            [[1, 0, translation_dist[0]], [0, 1, translation_dist[1]], [0, 0, 1]]
-        )
+        h_translation: npt.NDArray[np.int32] = np.array([[1, 0, -x_min], [0, 1, -y_min], [0, 0, 1]])
 
         # Warp second images based off of points
         output_img: npt.NDArray[np.uint8] = cv2.warpPerspective(
             img_2, h_translation.dot(map_0), (x_max - x_min, y_max - y_min)
         )
         output_img[
-            translation_dist[1] : rows1 + translation_dist[1],
-            translation_dist[0] : cols1 + translation_dist[0],
+            -y_min : rows1 + -y_min,
+            -x_min : cols1 + -x_min,
         ] = img_1
 
-        self.final_image = output_img
+        return output_img
 
-    def crop_space(self, img: npt.NDArray[np.uint8]) -> None:
+    @classmethod
+    def crop_space(cls, img: npt.NDArray[np.uint8], black_pixels: int) -> npt.NDArray[np.uint8]:
         """
         Crops out all of the black space created from the perspective
         shift when stitching the image.
+        Parameters
+        ----------
+        img: npt.NDArray[np.uint8]
+            Final image to be cropped.
+        black_pixels: int
+            Max number of black pixels in final image.
         Returns
-        -------
+        ----------
         npt.NDArray[np.uint8]
             Cropped image
         """
+
         # Creates a 10 pixel border for the stitched image to help find contours
         stitched: npt.NDArray[np.uint8] = cv2.copyMakeBorder(
             img, 10, 10, 10, 10, cv2.BORDER_CONSTANT, (0, 0, 0)
@@ -226,7 +260,7 @@ class Stitcher:
         sub: npt.NDArray[np.uint8] = mask.copy()
 
         # Will loop until there are no more non zero pixels
-        while cv2.countNonZero(sub) > self.black_pixels:
+        while cv2.countNonZero(sub) > black_pixels:
             min_rect = cv2.erode(min_rect, None, iterations=10)
             sub = cv2.subtract(min_rect, thresh)
 
@@ -241,13 +275,14 @@ class Stitcher:
         con = max(cnts, key=cv2.contourArea)
         (x, y, width, height) = cv2.boundingRect(con)
 
-        self.final_image = stitched[y : y + height, x : x + width]
+        return stitched[y : y + height, x : x + width]
 
     def template_match(self) -> None:
         """
         Mathes the center image with the final image to get center coordinate.
         NOTE: Not yet implemeneted.
         """
+
         raise NotImplementedError("Function not Implemented")
 
     def crop_ratio(self) -> None:
@@ -255,6 +290,7 @@ class Stitcher:
         Crops final image into a 16:9 aspect ratio given the center.
         NOTE: Not yet implemeneted.
         """
+
         raise NotImplementedError("Function not Implemented")
 
     def wgs_transform(self) -> None:
@@ -262,6 +298,7 @@ class Stitcher:
         Transform final image to WGS84.
         NOTE: Not yet implemeneted.
         """
+
         raise NotImplementedError("Function not Implemented")
 
 
