@@ -2,8 +2,6 @@
 Algorithms related to stitching images.
 """
 
-# pylint: disable=W0511
-
 import os
 import argparse
 from typing import List, Tuple
@@ -64,7 +62,7 @@ class Stitcher:
             matches: npt.NDArray[np.float64] = self.get_matches(final_image, color_images[i])
             final_image = self.warp_images(color_images[i], final_image, matches)
 
-            ## Debug Code: Shows each iteration and which iteration stitcher is on
+            ## Debug Code: Shows each iteration and which iteration stitcher is on # pylint: disable=W0511
             # print("Iteration:", i)
             # cv2.imshow("WIP Final", self.final_image)
             # cv2.waitKey(0)
@@ -264,7 +262,7 @@ class Stitcher:
             min_rect = cv2.erode(min_rect, None, iterations=10)
             sub = cv2.subtract(min_rect, thresh)
 
-            ## Debug Code: Shows the crop and prints the number of black pixels
+            ## Debug Code: Shows the crop and prints the number of black pixels # pylint: disable=W0511
             # cv2.imshow("TEST", sub)
             # cv2.waitKey(0)
             # print(cv2.countNonZero(sub))
