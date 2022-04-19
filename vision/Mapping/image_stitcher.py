@@ -40,7 +40,7 @@ class Stitcher:
             if file.endswith(".JPG") or file.endswith(".jpg"):
                 list_paths.append(os.path.join(self.image_path, file))
 
-        if len(list_paths) == 0:
+        if len(list_paths) <= 1:
             raise IndexError("Not Enough Images in Directory")
 
         # Read the images and appends them into a list and count black pixels
