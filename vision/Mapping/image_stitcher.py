@@ -2,6 +2,8 @@
 Algorithms related to stitching images.
 """
 
+# pylint: disable=W0511
+
 import os
 import argparse
 from typing import List, Tuple
@@ -52,17 +54,18 @@ class Stitcher:
             if file.endswith(".JPG") or file.endswith(".jpg"):
                 c_img: npt.NDArray[np.uint8] = cv2.imread(os.path.join(self.image_path, file))
                 color_images.append(c_img)
-                black_pixels += (c_img == (0, 0, 0)).all(axis=-1).sum()
+                blk_range = cv2.inRange(c_img, (0, 0, 0), (0, 0, 0))
+                black_pixels += cv2.countNonZero(blk_range)
 
         # Set the first image as final_image so it can run in a loop
         final_image: npt.NDArray[np.uint8] = color_images[0]
 
         # Loop through all images in images list
-        for i in range(1, len(color_images)):
-            matches: npt.NDArray[np.float64] = self.get_matches(final_image, color_images[i])
-            final_image = self.warp_images(color_images[i], final_image, matches)
+        for img in color_images:
+            matches: npt.NDArray[np.float64] = self.get_matches(final_image, img)
+            final_image = self.warp_images(img, final_image, matches)
 
-            ## Debug Code: Shows each iteration and which iteration stitcher is on # pylint: disable=W0511
+            ## Debug Code: Shows each iteration and which iteration stitcher is on # pylint: disable=fixme
             # print("Iteration:", i)
             # cv2.imshow("WIP Final", self.final_image)
             # cv2.waitKey(0)
@@ -107,8 +110,8 @@ class Stitcher:
         descriptors1: npt.NDArray[np.uint8]
         descriptors2: npt.NDArray[np.uint8]
 
-        keypoints1, descriptors1 = orb.detectAndCompute(grey_img_1, None)
-        keypoints2, descriptors2 = orb.detectAndCompute(grey_img_2, None)
+        keypoints1, descriptors1 = orb.detectAndCompute(grey_img_1, mask=None)
+        keypoints2, descriptors2 = orb.detectAndCompute(grey_img_2, mask=None)
 
         # Create a BFMatcher object to find matching keypoints.
         bf_match: cv2.BFMatcher = cv2.BFMatcher_create(cv2.NORM_HAMMING)
@@ -116,31 +119,27 @@ class Stitcher:
         # Find matching points
         matches: Tuple[cv2.DMatch] = bf_match.knnMatch(descriptors1, descriptors2, k=2)
 
-        # Put matches in list
-        all_matches: List[cv2.DMatch] = []
-        for match_0, match_1 in matches:
-            all_matches.append(match_0)
-
         # Finding the best matches
-        good: List[cv2.DMatch] = []
-        for match_0, match_1 in matches:
-            if match_0.distance < 0.6 * match_1.distance:
-                good.append(match_0)
+        best_matches: List[cv2.DMatch] = [
+            match_0 for match_0, match_1 in matches if match_0.distance < 0.6 * match_1.distance
+        ]
 
         # Set minimum match condition
         min_match_count: int = 10
 
-        if len(good) > min_match_count:
+        if len(best_matches) > min_match_count:
             # Convert keypoints to an argument for findHomography
             src_pts: npt.NDArray[np.float32] = np.array(
-                [keypoints1[m.queryIdx].pt for m in good], dtype=np.float32
+                [keypoints1[m.queryIdx].pt for m in best_matches], dtype=np.float32
             ).reshape((-1, 1, 2))
             dst_pts: npt.NDArray[np.float32] = np.array(
-                [keypoints2[m.trainIdx].pt for m in good], dtype=np.float32
+                [keypoints2[m.trainIdx].pt for m in best_matches], dtype=np.float32
             ).reshape((-1, 1, 2))
 
             # Establish a homography
-            matches, _ = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC, 5.0)
+            matches, _ = cv2.findHomography(
+                src_pts, dst_pts, method=cv2.RANSAC, ransacReprojThreshold=5.0
+            )
 
         else:
             raise cv2.error("Not Enough Matches")
@@ -262,7 +261,7 @@ class Stitcher:
             min_rect = cv2.erode(min_rect, None, iterations=10)
             sub = cv2.subtract(min_rect, thresh)
 
-            ## Debug Code: Shows the crop and prints the number of black pixels # pylint: disable=W0511
+            ## Debug Code: Shows the crop and prints the number of black pixels # pylint: disable=fixme
             # cv2.imshow("TEST", sub)
             # cv2.waitKey(0)
             # print(cv2.countNonZero(sub))
