@@ -2,8 +2,6 @@
 Algorithms related to stitching images.
 """
 
-# pylint: disable=W0511
-
 import os
 import argparse
 from typing import List, Tuple
@@ -34,12 +32,14 @@ class Stitcher:
     def multiple_image_stitch(self) -> npt.NDArray[np.uint8]:
         """
         Takes images from the filepath and runs them through stitching algorithms.
+
         Returns
         -------
         npt.NDArray[np.uint8]
             Final stitched image
-        Raise
-        -----
+
+        Raises
+        ------
         IndexError
             Flags if there are no images in directory.
         """
@@ -81,18 +81,21 @@ class Stitcher:
     ) -> npt.NDArray[np.float64]:
         """
         Finds matches between two grey images and establish a homography graph to warp two images.
+
         Parameters
         ----------
         img_1 : npt.NDArray[np.uint8]
             first image
         img_2 : npt.NDArray[np.uint8]
             second image
+
         Returns
         -------
         npt.NDArray[np.float64]
             Matches between two images
-        Raise
-        -----
+
+        Raises
+        ------
         cv2.error
             Flags if there is not enough matches between images.
         """
@@ -156,6 +159,7 @@ class Stitcher:
         """
         Warps the perspective of the images based on the homography map and
         stitches the images together based off of the points.
+
         Parameters
         ----------
         img_1 : npt.NDArray[np.uint8]
@@ -164,6 +168,7 @@ class Stitcher:
             second image
         map_0 : npt.NDArray[np.float64]
             Homography map with relation points
+
         Returns
         -------
         npt.NDArray[np.uint8]
@@ -219,12 +224,14 @@ class Stitcher:
         """
         Crops out all of the black space created from the perspective
         shift when stitching the image.
+
         Parameters
         ----------
         img: npt.NDArray[np.uint8]
             Final image to be cropped.
         black_pixels: int
             Max number of black pixels in final image.
+
         Returns
         -------
         npt.NDArray[np.uint8]
