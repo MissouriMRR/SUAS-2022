@@ -39,7 +39,7 @@ class Stitcher:
         npt.NDArray[np.uint8]
             Final stitched image
         Raise
-        -------
+        -----
         IndexError
             Flags if there are no images in directory.
         """
@@ -88,11 +88,11 @@ class Stitcher:
         img_2 : npt.NDArray[np.uint8]
             second image
         Returns
-        ----------
+        -------
         npt.NDArray[np.float64]
             Matches between two images
         Raise
-        ----------
+        -----
         cv2.error
             Flags if there is not enough matches between images.
         """
@@ -165,7 +165,7 @@ class Stitcher:
         map_0 : npt.NDArray[np.float64]
             Homography map with relation points
         Returns
-        ----------
+        -------
         npt.NDArray[np.uint8]
             Stitched image
         """
@@ -226,7 +226,7 @@ class Stitcher:
         black_pixels: int
             Max number of black pixels in final image.
         Returns
-        ----------
+        -------
         npt.NDArray[np.uint8]
             Cropped image
         """
