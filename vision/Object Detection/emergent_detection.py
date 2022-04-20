@@ -2,7 +2,7 @@
 Functions relating to detection of the emergent object.
 """
 
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 import cv2
 
@@ -12,7 +12,7 @@ import numpy.typing as npt
 from vision.common.bounding_box import BoundingBox, ObjectType
 
 
-def get_emg_bounds(img: npt.NDArray[np.uint8]) -> List[BoundingBox]:
+def get_emg_bounds(img: npt.NDArray[np.uint8]) -> Optional[BoundingBox]:
     """
     Gets the bounds of the emergent object in an image.
 
@@ -20,12 +20,18 @@ def get_emg_bounds(img: npt.NDArray[np.uint8]) -> List[BoundingBox]:
     ----------
     img : npt.NDArray[np.uint8]
         the image to find the emergent object in
+
+    Returns
+    -------
+    box : Optional[BoundingBox]
+        The BoundingBox around the emergent object if it is found.
+        Returns None if no emergent object found or more than one found.
     """
     # Initialize HOG object
     hog: cv2.HOGDescriptor = cv2.HOGDescriptor()  # the hog
     hog.setSVMDetector(cv2.HOGDescriptor_getDefaultPeopleDetector())
 
-    # Find boudning boxes
+    # Run detection
     win_stride: Tuple[int, int] = (4, 4)  # sliding window step size x, y
     padding: Tuple[int, int] = (8, 8)  # x, y padding
     scale: float = 1.05  # determines size of image pyramid
@@ -33,18 +39,25 @@ def get_emg_bounds(img: npt.NDArray[np.uint8]) -> List[BoundingBox]:
     rects: List[Tuple[int, int, int, int]]
     rects, _ = hog.detectMultiScale(img, winStride=win_stride, padding=padding, scale=scale)
 
+    # return none if no object found or more than one found
+    if len(rects) != 1:
+        return None
+
     # Convert to bounding boxes
-    detected_people: List[BoundingBox] = []
-    for x, y, width, height in rects:
-        bounds: Tuple[Tuple[int, int], Tuple[int, int], Tuple[int, int], Tuple[int, int]] = (
-            (x, y),
-            (x + width, y),
-            (x + width, y + height),
-            (x, y + height),
-        )
-        box = BoundingBox(vertices=bounds, obj_type=ObjectType.EMG_OBJECT)
-        detected_people.append(box)
-    return detected_people
+    x: int
+    y: int
+    width: int
+    height: int
+    x, y, width, height = rects[0]
+    bounds: Tuple[Tuple[int, int], Tuple[int, int], Tuple[int, int], Tuple[int, int]] = (
+        (x, y),
+        (x + width, y),
+        (x + width, y + height),
+        (x, y + height),
+    )
+    box = BoundingBox(vertices=bounds, obj_type=ObjectType.EMG_OBJECT)
+
+    return box
 
 
 # Driver for testing emergent object functions
