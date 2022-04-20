@@ -1,4 +1,7 @@
-#!/usr/bin/env python3
+"""
+File containing the move_to function responsible
+for moving the drone to a certain waypoint
+"""
 
 import typing
 import asyncio

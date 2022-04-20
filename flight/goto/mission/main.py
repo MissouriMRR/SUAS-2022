@@ -1,4 +1,6 @@
-#!/usr/bin/env python3
+"""
+Main driver code for moving drone to each waypoint
+"""
 
 import asyncio
 import json_parsing
@@ -8,13 +10,14 @@ import mavsdk as sdk
 import logging
 import math
 import typing
+from typing import Dict,List
 
-async def run():
+async def run() -> None:
     #Put all latitudes, longitudes and altitudes into seperate arrays
-    lats: [float]=[]
-    longs: [float]=[]
-    altitudes: [float]=[]
-    waypoints: [Dict[str,float]] =json_parsing.waypoint_parsing("numbers.json")
+    lats: List[float]=[]
+    longs: List[float]=[]
+    altitudes: List[float]=[]
+    waypoints: List[Dict[str,float]] =json_parsing.waypoint_parsing("numbers.json")
     for i in waypoints:
         for key,val in i.items():
             if(key=="latitude"):
@@ -53,6 +56,17 @@ async def run():
     #move to each waypoint in mission
     for point in range(len(waypoints)):
         await goto.move_to(drone,lats[point],longs[point],altitudes[point])
+
+    #return home
+    print("Last waypoint reached")
+    print("Returning to home")
+    await drone.action.return_to_launch()
+    print("Staying connected, press Ctrl-C to exit")
+    
+    #infinite loop till forced disconnect
+    while True:
+        await asyncio.sleep(1)
+
 
 if __name__ == "__main__":
     loop = asyncio.get_event_loop()
