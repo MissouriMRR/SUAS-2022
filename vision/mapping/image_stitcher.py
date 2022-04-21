@@ -61,7 +61,7 @@ class Stitcher:
         final_image: npt.NDArray[np.uint8] = color_images[0]
 
         # Loop through all images in images list
-        for img in color_images:
+        for img in color_images[1:]:
             matches: npt.NDArray[np.float64] = self.get_matches(final_image, img)
             final_image = self.warp_images(img, final_image, matches)
 
