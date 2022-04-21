@@ -2,6 +2,7 @@
 Functions relating to detection of the emergent object.
 """
 
+
 from typing import List, Optional, Tuple
 
 import cv2
@@ -84,3 +85,22 @@ if __name__ == "__main__":
 
     # Read in the image
     test_img: npt.NDArray[np.uint8] = cv2.imread(file_name)
+
+    # Get the bounds in the image
+    bbox: Optional[BoundingBox] = get_emg_bounds(test_img)
+    print(bbox)
+
+    if bbox is not None:
+        # Show the found bounding box
+        result_img: npt.NDArray[np.uint8] = np.copy(test_img)
+        x_min: int
+        x_max: int
+        x_min, x_max = bbox.get_x_extremes()
+        y_min: int
+        y_max: int
+        y_min, y_max = bbox.get_y_extremes()
+        cv2.rectangle(result_img, (x_min, y_min), (x_max, y_max), (0, 0, 255), 2)
+
+        cv2.imshow("Result", result_img)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
