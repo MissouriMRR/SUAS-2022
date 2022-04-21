@@ -91,7 +91,7 @@ class Stitcher:
 
         Returns
         -------
-        npt.NDArray[np.float64]
+        Tuple[cv2.DMatch]
             Matches between two images
 
         Raises
@@ -140,14 +140,14 @@ class Stitcher:
             ).reshape((-1, 1, 2))
 
             # Establish a homography
-            matches, _ = cv2.findHomography(
+            matches_arr, _ = cv2.findHomography(
                 src_pts, dst_pts, method=cv2.RANSAC, ransacReprojThreshold=5.0
             )
 
         else:
             raise cv2.error("Not Enough Matches")
 
-        return matches
+        return matches_arr
 
     @classmethod
     def warp_images(
