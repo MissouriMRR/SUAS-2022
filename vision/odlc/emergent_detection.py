@@ -13,6 +13,31 @@ import numpy.typing as npt
 from vision.common.bounding_box import BoundingBox, ObjectType
 
 
+def preprocess_emg_obj(img: npt.NDArray[np.uint8]) -> npt.NDArray[np.uint8]:
+    """
+    Preprocessing to increase accuracy of emergent object detection.
+
+    Parameters
+    ----------
+    img : npt.NDArray[np.uint8]
+        the image containing the emergent object
+
+    Returns
+    -------
+    resized : npt.NDArray[np.uint8]
+        the preprocessed image
+    """
+
+    # Resize image to increase accuracy and reduce processing time
+    width: int = min(400, img.shape[1])
+    height: int = int(width * (img.shape[0] / img.shape[1]))
+    resized: npt.NDArray[np.uint8] = cv2.resize(
+        img, (width, height), interpolation=cv2.INTER_LINEAR
+    )
+
+    return resized
+
+
 def get_emg_bounds(img: npt.NDArray[np.uint8]) -> Optional[BoundingBox]:
     """
     Gets the bounds of the emergent object in an image.
@@ -87,7 +112,13 @@ if __name__ == "__main__":
     test_img: npt.NDArray[np.uint8] = cv2.imread(file_name)
 
     # Get the bounds in the image
-    bbox: Optional[BoundingBox] = get_emg_bounds(test_img)
+    processed_img: npt.NDArray[np.uint8] = preprocess_emg_obj(test_img)
+
+    cv2.imshow("Preprocessed Image", processed_img)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+
+    bbox: Optional[BoundingBox] = get_emg_bounds(processed_img)
     print(bbox)
 
     if bbox is not None:
@@ -101,6 +132,6 @@ if __name__ == "__main__":
         y_min, y_max = bbox.get_y_extremes()
         cv2.rectangle(result_img, (x_min, y_min), (x_max, y_max), (0, 0, 255), 2)
 
-        cv2.imshow("Result", result_img)
+        cv2.imshow("Detected Object", result_img)
         cv2.waitKey(0)
         cv2.destroyAllWindows()
