@@ -2,8 +2,6 @@
 Algorithms related to stitching images.
 """
 
-# pylint: disable=W0511
-
 import os
 import argparse
 from typing import List, Tuple
@@ -34,12 +32,14 @@ class Stitcher:
     def multiple_image_stitch(self) -> npt.NDArray[np.uint8]:
         """
         Takes images from the filepath and runs them through stitching algorithms.
+
         Returns
         -------
         npt.NDArray[np.uint8]
             Final stitched image
-        Raise
-        -----
+
+        Raises
+        ------
         IndexError
             Flags if there are no images in directory.
         """
@@ -61,7 +61,7 @@ class Stitcher:
         final_image: npt.NDArray[np.uint8] = color_images[0]
 
         # Loop through all images in images list
-        for img in color_images:
+        for img in color_images[1:]:
             matches: npt.NDArray[np.float64] = self.get_matches(final_image, img)
             final_image = self.warp_images(img, final_image, matches)
 
@@ -81,18 +81,21 @@ class Stitcher:
     ) -> npt.NDArray[np.float64]:
         """
         Finds matches between two grey images and establish a homography graph to warp two images.
+
         Parameters
         ----------
         img_1 : npt.NDArray[np.uint8]
             first image
         img_2 : npt.NDArray[np.uint8]
             second image
+
         Returns
         -------
         npt.NDArray[np.float64]
             Matches between two images
-        Raise
-        -----
+
+        Raises
+        ------
         cv2.error
             Flags if there is not enough matches between images.
         """
@@ -137,14 +140,15 @@ class Stitcher:
             ).reshape((-1, 1, 2))
 
             # Establish a homography
-            matches, _ = cv2.findHomography(
+            matches_arr: npt.NDArray[np.float64]
+            matches_arr, _ = cv2.findHomography(
                 src_pts, dst_pts, method=cv2.RANSAC, ransacReprojThreshold=5.0
             )
 
         else:
             raise cv2.error("Not Enough Matches")
 
-        return matches
+        return matches_arr
 
     @classmethod
     def warp_images(
@@ -156,6 +160,7 @@ class Stitcher:
         """
         Warps the perspective of the images based on the homography map and
         stitches the images together based off of the points.
+
         Parameters
         ----------
         img_1 : npt.NDArray[np.uint8]
@@ -164,6 +169,7 @@ class Stitcher:
             second image
         map_0 : npt.NDArray[np.float64]
             Homography map with relation points
+
         Returns
         -------
         npt.NDArray[np.uint8]
@@ -196,10 +202,10 @@ class Stitcher:
         m_points_max: npt.NDArray[np.float32] = list_of_points.max(axis=0).ravel()
         m_points_min: npt.NDArray[np.float32] = list_of_points.min(axis=0).ravel()
 
-        x_min: npt.NDArray[np.int32] = np.array((m_points_min - 0.5)[0], dtype=np.int32)
-        y_min: npt.NDArray[np.int32] = np.array((m_points_min - 0.5)[1], dtype=np.int32)
-        x_max: npt.NDArray[np.int32] = np.array((m_points_max + 0.5)[0], dtype=np.int32)
-        y_max: npt.NDArray[np.int32] = np.array((m_points_max + 0.5)[1], dtype=np.int32)
+        x_min: int = int((m_points_min - 0.5)[0])
+        y_min: int = int((m_points_min - 0.5)[1])
+        x_max: int = int((m_points_max + 0.5)[0])
+        y_max: int = int((m_points_max + 0.5)[1])
 
         h_translation: npt.NDArray[np.int32] = np.array([[1, 0, -x_min], [0, 1, -y_min], [0, 0, 1]])
 
@@ -219,12 +225,14 @@ class Stitcher:
         """
         Crops out all of the black space created from the perspective
         shift when stitching the image.
+
         Parameters
         ----------
         img: npt.NDArray[np.uint8]
             Final image to be cropped.
         black_pixels: int
             Max number of black pixels in final image.
+
         Returns
         -------
         npt.NDArray[np.uint8]
