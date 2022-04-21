@@ -1,6 +1,7 @@
 import rrt
 import helpers
 import plotter
+import time
 
 
 OBSTACLE_BUFFER = 10  # meters
@@ -109,11 +110,12 @@ if __name__ == "__main__":
     # Find new safe path between all waypoints
     start = waypoints_points[0]
     goal = waypoints_points[1]
-    G = rrt.rrt(start, goal, boundary_shape, obstacle_shapes)
+    start_time = time.time()
+    G = rrt.RRT_star(start, goal, boundary_shape, obstacle_shapes)
+    print(f"rrt runtime = {(time.time()-start_time):.3f}s")
 
     if G.success:
         path = rrt.dijkstra(G)
-        print(path)
         plotter.plot(G, obstacles, boundary, start, goal, path)
     else:
         plotter.plot(G, obstacles, boundary, start, goal)

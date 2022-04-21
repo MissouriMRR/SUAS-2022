@@ -1,3 +1,5 @@
+# Inspired by https://gist.github.com/Fnjn/58e5eaa27a3dc004c3526ea82a92de80
+
 import math
 import random
 import numpy as np
@@ -6,8 +8,9 @@ from shapely.geometry import Point, Polygon, LineString
 from collections import deque
 
 
-STEP_SIZE = 50  # meters
-ITERATIONS = 1000
+STEP_SIZE = 150  # meters
+NEIGHBORHOOD = 150  # meters
+ITERATIONS = 500
 
 
 def intersects_obstacle(shape, obstacles):
@@ -119,6 +122,59 @@ def rrt(startpos, endpos, boundary, obstacles):
             G.success = True
             print("success")
             break
+    return G
+
+
+def RRT_star(startpos, endpos, boundary, obstacles):
+    G = Graph(startpos, endpos)
+
+    for _ in range(ITERATIONS):
+        q_rand = G.randomPosition(boundary)
+        if intersects_obstacle(q_rand, obstacles):
+            continue
+
+        q_near, q_near_index = nearest(G, q_rand, obstacles)
+        if q_near is None:
+            continue
+
+        q_new = new_vertex(q_rand, q_near, STEP_SIZE)
+
+        q_new_index = G.add_vex(q_new)
+        dist = q_new.distance(q_near)
+        G.add_edge(q_new_index, q_near_index, dist)
+        G.distances[q_new_index] = G.distances[q_near_index] + dist
+
+        # update nearby vertices distance if q_new can help
+        # make a shorter path
+        for vex in G.vertices:
+            if vex == q_new:
+                continue
+
+            dist = vex.distance(q_new)
+            if dist > NEIGHBORHOOD:
+                continue
+
+            line = LineString([vex, q_new])
+            if intersects_obstacle(line, obstacles):
+                continue
+
+            idx = G.vex2idx[(vex.x, vex.y)]
+            if G.distances[q_new_index] + dist < G.distances[idx]:
+                G.add_edge(idx, q_new_index, dist)
+                G.distances[idx] = G.distances[q_new_index] + dist
+
+        dist = q_new.distance(G.endpos)
+        if dist <= STEP_SIZE:
+            endidx = G.add_vex(G.endpos)
+            G.add_edge(q_new_index, endidx, dist)
+            try:
+                G.distances[endidx] = min(G.distances[endidx], G.distances[q_new_index] + dist)
+            except:
+                G.distances[endidx] = G.distances[q_new_index] + dist
+
+            G.success = True
+            # print('success')
+            # break
     return G
 
 
