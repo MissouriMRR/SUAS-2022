@@ -91,7 +91,7 @@ class Stitcher:
 
         Returns
         -------
-        Tuple[cv2.DMatch]
+        npt.NDArray[np.float64]
             Matches between two images
 
         Raises
@@ -140,6 +140,7 @@ class Stitcher:
             ).reshape((-1, 1, 2))
 
             # Establish a homography
+            matches_arr: npt.NDArray[np.float64]
             matches_arr, _ = cv2.findHomography(
                 src_pts, dst_pts, method=cv2.RANSAC, ransacReprojThreshold=5.0
             )
