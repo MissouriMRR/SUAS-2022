@@ -29,9 +29,10 @@ repos:
     hooks:
     -   id: mypy
         args: ["--config-file=.mypy.ini"]
+        additional_dependencies: ['numpy>=1.21.2']
 
 -   repo: https://github.com/PyCQA/pylint
-    rev: 'v2.13.5'
+    rev: 'v2.13.7'
     hooks:
     -   id: pylint
         name: pylint
