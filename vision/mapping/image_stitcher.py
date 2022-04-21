@@ -201,10 +201,10 @@ class Stitcher:
         m_points_max: npt.NDArray[np.float32] = list_of_points.max(axis=0).ravel()
         m_points_min: npt.NDArray[np.float32] = list_of_points.min(axis=0).ravel()
 
-        x_min: npt.NDArray[np.int32] = np.array((m_points_min - 0.5)[0], dtype=np.int32)
-        y_min: npt.NDArray[np.int32] = np.array((m_points_min - 0.5)[1], dtype=np.int32)
-        x_max: npt.NDArray[np.int32] = np.array((m_points_max + 0.5)[0], dtype=np.int32)
-        y_max: npt.NDArray[np.int32] = np.array((m_points_max + 0.5)[1], dtype=np.int32)
+        x_min: int = int((m_points_min - 0.5)[0])
+        y_min: int = int((m_points_min - 0.5)[1])
+        x_max: int = int((m_points_max + 0.5)[0])
+        y_max: int = int((m_points_max + 0.5)[1])
 
         h_translation: npt.NDArray[np.int32] = np.array([[1, 0, -x_min], [0, 1, -y_min], [0, 0, 1]])
 
