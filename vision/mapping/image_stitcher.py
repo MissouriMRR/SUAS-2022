@@ -61,7 +61,7 @@ class Stitcher:
         final_image: npt.NDArray[np.uint8] = color_images[0]
 
         # Loop through all images in images list
-        for img in color_images:
+        for img in color_images[1:]:
             matches: npt.NDArray[np.float64] = self.get_matches(final_image, img)
             final_image = self.warp_images(img, final_image, matches)
 
@@ -140,14 +140,15 @@ class Stitcher:
             ).reshape((-1, 1, 2))
 
             # Establish a homography
-            matches, _ = cv2.findHomography(
+            matches_arr: npt.NDArray[np.float64]
+            matches_arr, _ = cv2.findHomography(
                 src_pts, dst_pts, method=cv2.RANSAC, ransacReprojThreshold=5.0
             )
 
         else:
             raise cv2.error("Not Enough Matches")
 
-        return matches
+        return matches_arr
 
     @classmethod
     def warp_images(
@@ -201,10 +202,10 @@ class Stitcher:
         m_points_max: npt.NDArray[np.float32] = list_of_points.max(axis=0).ravel()
         m_points_min: npt.NDArray[np.float32] = list_of_points.min(axis=0).ravel()
 
-        x_min: npt.NDArray[np.int32] = np.array((m_points_min - 0.5)[0], dtype=np.int32)
-        y_min: npt.NDArray[np.int32] = np.array((m_points_min - 0.5)[1], dtype=np.int32)
-        x_max: npt.NDArray[np.int32] = np.array((m_points_max + 0.5)[0], dtype=np.int32)
-        y_max: npt.NDArray[np.int32] = np.array((m_points_max + 0.5)[1], dtype=np.int32)
+        x_min: int = int((m_points_min - 0.5)[0])
+        y_min: int = int((m_points_min - 0.5)[1])
+        x_max: int = int((m_points_max + 0.5)[0])
+        y_max: int = int((m_points_max + 0.5)[1])
 
         h_translation: npt.NDArray[np.int32] = np.array([[1, 0, -x_min], [0, 1, -y_min], [0, 0, 1]])
 
