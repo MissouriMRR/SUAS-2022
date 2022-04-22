@@ -57,7 +57,7 @@ def get_emg_bounds(img: npt.NDArray[np.uint8]) -> Optional[BoundingBox]:
     hog: cv2.HOGDescriptor = cv2.HOGDescriptor()  # the hog
     hog.setSVMDetector(cv2.HOGDescriptor_getDefaultPeopleDetector())
 
-    # Run detection
+    # Run hog people detection
     win_stride: Tuple[int, int] = (4, 4)  # sliding window step size x, y
     padding: Tuple[int, int] = (8, 8)  # x, y padding
     scale: float = 1.05  # determines size of image pyramid
@@ -84,6 +84,36 @@ def get_emg_bounds(img: npt.NDArray[np.uint8]) -> Optional[BoundingBox]:
     box = BoundingBox(vertices=bounds, obj_type=ObjectType.EMG_OBJECT)
 
     return box
+
+
+def crop_emg_obj(img: npt.NDArray[np.uint8], bbox: BoundingBox) -> npt.NDArray[np.uint8]:
+    """
+    Crops the image containing the emergent object to the BoundingBox.
+
+    Parameters
+    ----------
+    img : npt.NDArray[np.uint8]
+        the image containing the emergent object
+    bbox : BoundingBox
+        the bounding box containing the detected emergent object
+
+    Returns
+    -------
+    cropped_img : npt.NDArray[np.uint8]
+        the image cropped around the bounding box
+    """
+    cropped_img: npt.NDArray[np.uint8] = np.copy(img)
+
+    x_min: int
+    x_max: int
+    x_min, x_max = bbox.get_x_extremes()
+    y_min: int
+    y_max: int
+    y_min, y_max = bbox.get_y_extremes()
+
+    cropped_img = cropped_img[y_min:y_max, x_min:x_max]
+
+    return cropped_img
 
 
 # Driver for testing emergent object functions
@@ -118,20 +148,31 @@ if __name__ == "__main__":
     cv2.waitKey(0)
     cv2.destroyAllWindows()
 
-    bbox: Optional[BoundingBox] = get_emg_bounds(processed_img)
-    print(bbox)
+    emg_box: Optional[BoundingBox] = get_emg_bounds(processed_img)
 
-    if bbox is not None:
+    if emg_box is not None:
+        print(emg_box)
+
         # Show the found bounding box
         result_img: npt.NDArray[np.uint8] = np.copy(test_img)
-        x_min: int
-        x_max: int
-        x_min, x_max = bbox.get_x_extremes()
-        y_min: int
-        y_max: int
-        y_min, y_max = bbox.get_y_extremes()
-        cv2.rectangle(result_img, (x_min, y_min), (x_max, y_max), (0, 0, 255), 2)
+        min_x: int
+        max_x: int
+        min_x, max_x = emg_box.get_x_extremes()
+        min_y: int
+        max_y: int
+        min_y, max_y = emg_box.get_y_extremes()
+        cv2.rectangle(result_img, (min_x, min_y), (max_x, max_y), (0, 0, 255), 2)
 
         cv2.imshow("Detected Object", result_img)
         cv2.waitKey(0)
         cv2.destroyAllWindows()
+
+        # Crop the image around the object and show
+        obj_img: npt.NDArray = crop_emg_obj(test_img, emg_box)
+
+        cv2.imshow("Cropped Image", obj_img)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
+
+    else:
+        print("No Object Found")
