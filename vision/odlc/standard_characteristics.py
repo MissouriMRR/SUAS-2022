@@ -256,7 +256,7 @@ def find_colors_in_shape(
     shape: npt.NDArray[np.intc],
 ) -> None:
     """
-    Not written yet, i just need pylint to shut up for a sec
+    Not written yet, i just need pylint to shut up for a sec.
     """
     height: int
     width: int
