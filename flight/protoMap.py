@@ -24,12 +24,14 @@ NW: float = 5.585054
 
 # ------ GLOBAL VARIABLES ------ #
 
-def map(info: Tuple[Tuple[float, float], float], 
-altitude: int = 750, 
-focal_length: float = 4.9,
+
+def map(
+    info: Tuple[Tuple[float, float], float],
+    altitude: int = 750,
+    focal_length: float = 4.9,
 ) -> List[Tuple[float, float]]:
     """
-    Calculates the map area, cuts map area into sections, 
+    Calculates the map area, cuts map area into sections,
     then creates flight path for drone through sections.
 
     Parameters
@@ -43,12 +45,6 @@ focal_length: float = 4.9,
     -------
     path: List[Tuple[float, float]]
         The path that the drone will take through the map
-
-    Notes
-    -----
-    fov is the Field of View of the image area
-    fovH is the horizontal field of view distance
-    fovV is the vertical field of view distance
     """
 
     # Takes in tuple(start location, map height), altitude, and focal_length]
@@ -61,52 +57,102 @@ focal_length: float = 4.9,
 
     # Calculate the width and height of camera image
     cam_w, cam_h = image_area(altitude, focal_length)
-    print("Camera Width:", cam_w)
-    print("Camera Height:", cam_h)
+    #print("Camera Width:", cam_w)
+    #print("Camera Height:", cam_h)
 
     # Determine map width using MAP_H and aspect ratio 16:9
     # Units: ft
     map_w: float = (16 * map_h) / 9
 
-    print("Map Width:", map_w)
-    print("Map Height:", map_h)
+    #print("Map Width:", map_w)
+    #print("Map Height:", map_h)
 
     # Find center of each piece consider OVERLAP
-    ft_waypoints: List[Tuple[float, float]] = find_centers(map_w, map_h, cam_w, cam_h, OVERLAP)
-    print("Num of waypoints:", len(ft_waypoints))
+    ft_waypoints: List[Tuple[float, float]] = find_centers(
+        map_w, map_h, cam_w, cam_h, OVERLAP
+    )[0]
+    col = find_centers(map_w, map_h, cam_w, cam_h, OVERLAP)[1]
+    #print("Num of waypoints:", len(ft_waypoints))
 
     # Convert centers to lat, long coordinates
     coord: List[Tuple[float, float]] = coordinates(ft_waypoints, info[0], map_w, map_h)
-    print("Coord:", len(coord))
+    #print("Coord:", len(coord))
 
     # Flight path algorithm
-    pass
+    path = flight_path(coord, col)
+
+    return path
+
 
 def image_area(altitude: int, focal_length: float) -> Tuple[float, float]:
+    """
+    Takes in the altitude of the drone and the zoom (focal_length) in order to determine
+    the area of the image captures by the drone
+
+    Parameters
+    ----------
+    altitude: int
+    focal_length: float
+
+    Returns
+    -------
+    (cam_w, cam_h): Tuple[float, float]
+
+    Notes
+    -----
+    fov is the Field of View of the image area
+    fovH is the horizontal field of view distance
+    fovV is the vertical field of view distance
+    """
+
     fov: float = 2 * math.atan((SENSOR_W / (2 * focal_length)))
-    print("FOV:", fov)
+    #print("FOV:", fov)
 
     fovH: float = SENSOR_W / SENSOR_D * fov
     fovV: float = SENSOR_H / SENSOR_D * fov
 
-    print("fovH:", fovH)
-    print("fovV:", fovV)
+    #print("fovH:", fovH)
+    #print("fovV:", fovV)
 
     cam_w: float = 2 * altitude * math.tan(fovH / 2)
     cam_h: float = 2 * altitude * math.tan(fovV / 2)
 
     return (cam_w, cam_h)
 
-def find_centers(map_w: float, map_h: float, 
-cam_w: float, cam_h: float, overlap: float,
+
+def find_centers(
+    map_w: float,
+    map_h: float,
+    cam_w: float,
+    cam_h: float,
+    overlap: float,
 ) -> List[Tuple[float, float]]:
+    """
+    This function will split the map into even sections accounting for the image area
+    and overlap for image stitching. It will start at the top left corner and move
+    a determined distance from from the top left corner to the center of a section
+    for every section.
+
+    Parameters
+    ----------
+    map_w: float
+    map_h: float
+    cam_w: float
+    cam_h: float,
+    overlap: float
+
+    Returns
+    -------
+    waypoints: List[Tuple[float, float]]
+    """
+
     # Return a 2d list of center locations for each image
     # List of way points
     waypoints: List[Tuple[float, float]] = []
 
     # Determines how much per section we need to move from current section over
-    widthMove: float = (cam_w - (cam_w * overlap))
-    heightMove: float = (cam_h - (cam_h * overlap))
+    widthMove: float = cam_w - (cam_w * overlap)
+    heightMove: float = cam_h - (cam_h * overlap)
 
     # Adds starting waypoint to list of waypoints as (x,y)
     midArea = 1 - (2 * overlap)
@@ -117,25 +163,44 @@ cam_w: float, cam_h: float, overlap: float,
     rows: int = math.ceil((map_w - x) / widthMove) + 1
     cols: int = math.ceil((map_h - y) / heightMove) + 1
 
-    print("Rows:", rows)
-    print("Cols:", cols)
+    #print("Rows:", rows)
+    #print("Cols:", cols)
 
     # Find all waypoints for each section
     for i in range(rows):
         for j in range(cols):
-            waypoints.append((x + (i * widthMove),y + (j * heightMove)))
+            waypoints.append((x + (i * widthMove), y + (j * heightMove)))
 
-    return waypoints
+    return waypoints, cols
 
-def coordinates(waypoints: List[Tuple[float, float]], 
-center: Tuple[float, float],
-map_w: float,
-map_h: float,
+
+def coordinates(
+    waypoints: List[Tuple[float, float]],
+    center: Tuple[float, float],
+    map_w: float,
+    map_h: float,
 ) -> List[Tuple[float, float]]:
-    
+
+    """
+    Finds the coordinate locations of each section of the waypoints converting
+    from distance traveled and bearing to lat,long coordinates.
+
+    Parameters
+    ----------
+    waypoints: List[Tuple[float, float]]
+    center: Tuple[float, float]
+    map_w: float
+    map_h: float
+
+    Returns
+    -------
+    coord: List[Tuple[float, float]]
+    """
+
     # Converts feet coordinates to lat, long coordinates
     # Returns list of waypoints in lat, long coordinates
     coord: List[Tuple[float, float]] = []
+
     # First calculate where the (0,0) coordinate is in lat,long
     # Move (0,0) is the top right corner so we move left and up to get there
     base: float = map_w / 2
@@ -152,27 +217,71 @@ map_h: float,
     return coord
 
 
-# https://stackoverflow.com/questions/7222382/get-lat-long-given-current-point-distance-and-bearing 
-def conversion(coord: Tuple[float, float], bearing: float, distance: float) -> Tuple[float, float]:
-    o_lat: float = math.radians(coord[0]) #Original lat point converted to radians
-    o_lon: float = math.radians(coord[1]) #Original long point converted to radians
+def conversion(
+    coord: Tuple[float, float], bearing: float, distance: float
+) -> Tuple[float, float]:
+    """
+    Uses the current location, bearing of travel, and the distance traveled in order to determine
+    the lat,long coordinates of the new location
 
-    new_lat: float = math.asin( math.sin(o_lat)*math.cos(distance/RADIUS) +
-        math.cos(o_lat)*math.sin(distance/RADIUS)*math.cos(bearing))
+    Parameters
+    ----------
+    coord: Tuple[float, float]
+    bearing: float
+    distance: float
 
-    new_lon: float = o_lon + math.atan2(math.sin(bearing)*math.sin(distance/RADIUS)*math.cos(o_lat),
-                math.cos(distance/RADIUS)-math.sin(o_lat)*math.sin(new_lat))
+    Returns
+    -------
+    (new_lat: float, new_long: float)
+
+    References
+    ----------
+    https://stackoverflow.com/questions/7222382/get-lat-long-given-current-point-distance-and-bearing
+
+    This is the link to the reference used for the conversion of the parameters into lat,long coordinates
+    """
+    o_lat: float = math.radians(coord[0])  # Original lat point converted to radians
+    o_lon: float = math.radians(coord[1])  # Original long point converted to radians
+
+    new_lat: float = math.asin(
+        math.sin(o_lat) * math.cos(distance / RADIUS)
+        + math.cos(o_lat) * math.sin(distance / RADIUS) * math.cos(bearing)
+    )
+
+    new_lon: float = o_lon + math.atan2(
+        math.sin(bearing) * math.sin(distance / RADIUS) * math.cos(o_lat),
+        math.cos(distance / RADIUS) - math.sin(o_lat) * math.sin(new_lat),
+    )
 
     new_lat: float = math.degrees(new_lat)
     new_lon: float = math.degrees(new_lon)
 
     return (new_lat, new_lon)
 
-def flight_path(loc: List[Tuple[float, float]]) -> List[Tuple[float, float]]:
-    pass
 
-if __name__ == "__main__":
-    start_time = time.time()
-    info = ((38.145103, -76.427856), 1200.0)
-    map(info)
-    print("%.4f seconds" % (time.time() - start_time))
+def flight_path(points: List[Tuple[float, float]], col: int) -> List[Tuple[float, float]]:
+    new_arr = []
+    temp = []
+    for loc in points:
+        temp.append(loc)
+        if len(temp) == col:
+            new_arr.append(temp)
+            temp = []
+    
+    for i in range(len(new_arr)):
+        if i % 2 != 0:
+            new_arr[i].reverse()
+    
+    path = []
+    for row in new_arr:
+        path += row
+
+    #print(path)
+
+    return path
+
+# if __name__ == "__main__":
+#     start_time = time.time()
+#     info = ((38.145103, -76.427856), 1200.0)
+#     map(info)
+#     print("%.4f seconds" % (time.time() - start_time))
