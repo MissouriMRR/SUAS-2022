@@ -116,6 +116,39 @@ def crop_emg_obj(img: npt.NDArray[np.uint8], bbox: BoundingBox) -> npt.NDArray[n
     return cropped_img
 
 
+def detect_emergent(img: npt.NDArray[np.uint8]) -> Optional[npt.NDArray[np.uint8]]:
+    """
+    Detects the emergent object in the image and crops the image
+    around the object.
+    Runs other emergent detection functions in the correct order.
+    Returns None if emergent object not detected.
+
+    Parameters
+    ----------
+    img : npt.NDArray[np.uint8]
+        the image containing the emergent object
+
+    Returns
+    -------
+    emg_obj_img : Optional[npt.NDArray[np.uint8]]
+        the image cropped around the emergent object.
+        returns None if emergent object not detected
+    """
+    # Preprocessing
+    preproccessed_img: npt.NDArray[np.uint8] = preprocess_emg_obj(img)
+
+    # Detect the object
+    emg_obj_box: Optional[BoundingBox] = get_emg_bounds(preproccessed_img)
+
+    if emg_obj_box is not None:  # found bounds for emergent object
+        # Crop the image around the object
+        emg_obj_img: npt.NDArray[np.uint8] = crop_emg_obj(img, emg_obj_box)
+
+        return emg_obj_img
+
+    return None  # emergent object was not detected
+
+
 # Driver for testing emergent object functions
 if __name__ == "__main__":
     import argparse
