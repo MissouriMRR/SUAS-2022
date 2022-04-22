@@ -42,13 +42,13 @@ def coords_to_shape(coords):
     return shape
 
 
-def circles_to_shape(circles, obstacle_buffer):
+def circles_to_shape(circles):
     circle_shapes = []
     for circle in circles:
         x = circle["utm_x"]
         y = circle["utm_y"]
         radius = circle["radius"]
-        circle_shape = Point(x, y).buffer(radius + obstacle_buffer).boundary
+        circle_shape = Point(x, y).buffer(radius).boundary
         circle_shapes.append(circle_shape)
     return circle_shapes
 
@@ -58,3 +58,9 @@ def coords_to_points(coords):
     for coord in coords:
         points.append(Point(coord["utm_x"], coord["utm_y"]))
     return points
+
+
+def all_feet_to_meters(obstacles):
+    for obstacle in obstacles:
+        obstacle["radius"] *= 0.3048  # covert feet to meters
+    return obstacles

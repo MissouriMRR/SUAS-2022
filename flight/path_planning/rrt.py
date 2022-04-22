@@ -3,14 +3,67 @@
 import math
 import random
 import numpy as np
+import shapely
+import helpers
+import time
+import plotter
 from typing import Tuple
 from shapely.geometry import Point, Polygon, LineString
 from collections import deque
 
 
-STEP_SIZE = 150  # meters
-NEIGHBORHOOD = 150  # meters
-ITERATIONS = 500
+STEP_SIZE = 100  # meters
+NEIGHBORHOOD = 200  # meters
+ITERATIONS = 10000  # max number of iterations before failing to find a path
+ITERATIONS_AFTER = 100  # max number of iterations performed in the smaller area
+
+flyZones = [
+    {
+        "altitudeMin": 100.0,
+        "altitudeMax": 750.0,
+        "boundaryPoints": [
+            {"latitude": 38.1462694444444, "longitude": -76.4281638888889},
+            {"latitude": 38.151625, "longitude": -76.4286833333333},
+            {"latitude": 38.1518888888889, "longitude": -76.4314666666667},
+            {"latitude": 38.1505944444444, "longitude": -76.4353611111111},
+            {"latitude": 38.1475666666667, "longitude": -76.4323416666667},
+            {"latitude": 38.1446666666667, "longitude": -76.4329472222222},
+            {"latitude": 38.1432555555556, "longitude": -76.4347666666667},
+            {"latitude": 38.1404638888889, "longitude": -76.4326361111111},
+            {"latitude": 38.1407194444444, "longitude": -76.4260138888889},
+            {"latitude": 38.1437611111111, "longitude": -76.4212055555556},
+            {"latitude": 38.1473472222222, "longitude": -76.4232111111111},
+            {"latitude": 38.1461305555556, "longitude": -76.4266527777778},
+            {"latitude": 38.1462694444444, "longitude": -76.4281638888889},
+        ],
+    }
+][0]
+
+waypoints = [
+    {"latitude": 38.1446916666667, "longitude": -76.4279944444445, "altitude": 200.0},
+    {"latitude": 38.1461944444444, "longitude": -76.4237138888889, "altitude": 300.0},
+    {"latitude": 38.1438972222222, "longitude": -76.42255, "altitude": 400.0},
+    {"latitude": 38.1417722222222, "longitude": -76.4251083333333, "altitude": 400.0},
+    {"latitude": 38.14535, "longitude": -76.428675, "altitude": 300.0},
+    {"latitude": 38.1508972222222, "longitude": -76.4292972222222, "altitude": 300.0},
+    {"latitude": 38.1514944444444, "longitude": -76.4313833333333, "altitude": 300.0},
+    {"latitude": 38.1505333333333, "longitude": -76.434175, "altitude": 300.0},
+    {"latitude": 38.1479472222222, "longitude": -76.4316055555556, "altitude": 200.0},
+    {"latitude": 38.1443333333333, "longitude": -76.4322888888889, "altitude": 200.0},
+    {"latitude": 38.1433166666667, "longitude": -76.4337111111111, "altitude": 300.0},
+    {"latitude": 38.1410944444444, "longitude": -76.4321555555556, "altitude": 400.0},
+    {"latitude": 38.1415777777778, "longitude": -76.4252472222222, "altitude": 400.0},
+    {"latitude": 38.1446083333333, "longitude": -76.4282527777778, "altitude": 200.0},
+]
+
+obstacles = [
+    {"latitude": 38.146689, "longitude": -76.426475, "radius": 150.0, "height": 750.0},
+    {"latitude": 38.142914, "longitude": -76.430297, "radius": 300.0, "height": 300.0},
+    {"latitude": 38.149504, "longitude": -76.43311, "radius": 100.0, "height": 750.0},
+    {"latitude": 38.148711, "longitude": -76.429061, "radius": 300.0, "height": 750.0},
+    {"latitude": 38.144203, "longitude": -76.426155, "radius": 50.0, "height": 400.0},
+    {"latitude": 38.146003, "longitude": -76.430733, "radius": 225.0, "height": 500.0},
+]
 
 
 def intersects_obstacle(shape, obstacles):
@@ -125,10 +178,24 @@ def rrt(startpos, endpos, boundary, obstacles):
     return G
 
 
-def RRT_star(startpos, endpos, boundary, obstacles):
+def RRT_star(startpos, endpos, boundary, obstacles, informed_boundary_set=False):
     G = Graph(startpos, endpos)
 
-    for _ in range(ITERATIONS):
+    ellr = None
+    informed_boundary = None
+
+    counter = 0
+
+    for i in range(ITERATIONS):
+        # print(i)
+        if informed_boundary_set:
+            # print(f'Counter {counter}')
+            counter += 1
+
+        if counter >= ITERATIONS_AFTER:
+            print(f"Iterated for {counter} additional times in the smaller area")
+            break
+
         q_rand = G.randomPosition(boundary)
         if intersects_obstacle(q_rand, obstacles):
             continue
@@ -175,7 +242,71 @@ def RRT_star(startpos, endpos, boundary, obstacles):
             G.success = True
             # print('success')
             # break
-    return G
+
+            if not informed_boundary_set:
+                print(f"SUCCESS: Found a path after iterating {i} times")
+
+                informed_boundary_set = True
+
+                path = dijkstra(G)  # get path
+                ellr = informed_area(startpos, endpos, path)  # find informed area
+
+                informed_boundary = boundary.intersection(ellr)  # intersect with boundary
+                boundary = informed_boundary
+                print("Updated search area to the informed boundary")
+
+            # print('success')
+            # break
+
+    return G, ellr, informed_boundary
+
+
+def informed_area(q_start, q_goal, path):
+    expansion = 0  # initial expansion amount
+    expansion_rate = 10  # meters
+    buffer = 0  # meters
+    last_loop = False
+
+    # Loop until the informed area expands enough to cover all points
+    i = 0
+    while True:
+        i += 1
+        # 1st elem = center point (x,y) coordinates
+        center = ((q_goal.x + q_start.x) / 2, (q_goal.y + q_start.y) / 2)
+
+        # 2nd elem = the two semi-axis values (along x, along y)
+        dist = q_start.distance(q_goal)
+        x_semi_axis = (dist / 2) + expansion
+        y_semi_axis = (dist / 4) + expansion
+
+        # 3rd elem = angle in degrees between x-axis of the Cartesian base
+        #            and the corresponding semi-axis
+        delta_x = q_goal.x - q_start.x
+        delta_y = q_goal.y - q_start.y
+        theta = math.degrees(math.atan2(delta_y, delta_x))
+
+        ellipse = (center, (x_semi_axis, y_semi_axis), theta)
+
+        # Let create a circle of radius 1 around center point:
+        circ = shapely.geometry.Point(ellipse[0]).buffer(1)
+
+        # Let create the ellipse along x and y:
+        ell = shapely.affinity.scale(circ, int(ellipse[1][0]), int(ellipse[1][1]))
+
+        # Let rotate the ellipse (clockwise, x axis pointing right):
+        ellr = shapely.affinity.rotate(ell, ellipse[2])
+
+        if last_loop:
+            print(f"expanded {i} times to meet goal")
+            return ellr
+
+        if ellr.contains(LineString(path)):
+            expansion += buffer  # general buffer
+            last_loop = True
+
+        expansion += expansion_rate
+
+    return ellr
 
 
 def dijkstra(G):
@@ -208,3 +339,55 @@ def dijkstra(G):
         curNode = prev[curNode]
     path.appendleft(G.vertices[curNode])
     return list(path)
+
+
+def relax_path(path, obstacles):
+    if len(path) < 3:
+        return path
+
+    # check forwards
+    for j in range(2):
+        i = 0
+        while True:
+            if i + 2 > len(path) - 1:
+                break
+            front_curr = path[i]
+            front_next = path[i + 2]
+            line = LineString([front_curr, front_next])
+            if intersects_obstacle(line, obstacles):
+                i += 1
+            else:
+                del path[i + 1]
+        path.reverse()
+
+    return path
+
+
+if __name__ == "__main__":
+    # Add utm coordinates to all
+    boundary = helpers.all_latlon_to_utm(flyZones["boundaryPoints"])
+    obstacles = helpers.all_latlon_to_utm(obstacles)
+    waypoints = helpers.all_latlon_to_utm(waypoints)
+
+    # Convert silly units to proper units
+    obstacles = helpers.all_feet_to_meters(obstacles)
+
+    # Create shapely representations of everything for use in algorithm
+    boundary_shape = helpers.coords_to_shape(boundary)
+    obstacle_shapes = helpers.circles_to_shape(obstacles)
+    waypoints_points = helpers.coords_to_points(waypoints)
+
+    # Magic
+    start = waypoints_points[4]
+    goal = waypoints_points[5]
+    start_time = time.time()
+    G, ellr, informed_boundary = RRT_star(start, goal, boundary_shape, obstacle_shapes)
+    print(f"rrt runtime = {(time.time()-start_time):.3f}s")
+
+    if G.success:
+        path = dijkstra(G)
+        path = relax_path(path, obstacle_shapes)
+        plotter.plot(obstacles, boundary, G, path, ellr, informed_boundary)
+    else:
+        print("major error! could not find a path!")
+        plotter.plot(obstacles, boundary, G, ellr, informed_boundary)
