@@ -131,6 +131,13 @@ if __name__ == "__main__":
         help="Filename of the image to run on. Required argument.",
     )
 
+    parser.add_argument(
+        "-s",
+        "--skip_show_img",
+        action="store_true",
+        help="Skip showing images.",
+    )
+
     args: argparse.Namespace = parser.parse_args()
 
     # no file name specified, cannot continue
@@ -138,15 +145,20 @@ if __name__ == "__main__":
         raise RuntimeError("No file specified.")
     file_name: str = args.file_name
 
+    show_imgs: bool = True
+    if args.skip_show_img:
+        show_imgs = False
+
     # Read in the image
     test_img: npt.NDArray[np.uint8] = cv2.imread(file_name)
 
     # Get the bounds in the image
     processed_img: npt.NDArray[np.uint8] = preprocess_emg_obj(test_img)
 
-    cv2.imshow("Preprocessed Image", processed_img)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
+    if show_imgs:
+        cv2.imshow("Preprocessed Image", processed_img)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
 
     emg_box: Optional[BoundingBox] = get_emg_bounds(processed_img)
 
@@ -163,16 +175,18 @@ if __name__ == "__main__":
         min_y, max_y = emg_box.get_y_extremes()
         cv2.rectangle(result_img, (min_x, min_y), (max_x, max_y), (0, 0, 255), 2)
 
-        cv2.imshow("Detected Object", result_img)
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
+        if show_imgs:
+            cv2.imshow("Detected Object", result_img)
+            cv2.waitKey(0)
+            cv2.destroyAllWindows()
 
         # Crop the image around the object and show
         obj_img: npt.NDArray = crop_emg_obj(test_img, emg_box)
 
-        cv2.imshow("Cropped Image", obj_img)
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
+        if show_imgs:
+            cv2.imshow("Cropped Image", obj_img)
+            cv2.waitKey(0)
+            cv2.destroyAllWindows()
 
     else:
         print("No Object Found")
