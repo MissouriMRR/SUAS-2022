@@ -10,7 +10,7 @@ from typing import List, Tuple
 import numpy.typing as npt
 import numpy as np
 import cv2
-
+import pyproj
 
 class Stitcher:
     """
