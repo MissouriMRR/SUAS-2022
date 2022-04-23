@@ -42,7 +42,8 @@ class StateSettings:
         __run_description: str
             Description for Competition
     """
-    def __init__(self, takeoff_bool: bool = False, num_waypoints: int = DEFAULT_WAYPOINTS,
+    def __init__(self, takeoff_bool: bool = False, num_waypoints: int = DEFAULT_WAYPOINTS, waypoints_bool: bool = False,
+                 obstacle_avoidance: bool = False,
                  title: str = DEFAULT_RUN_TITLE, description: str = DEFAULT_RUN_DESCRIPTION) -> None:
         """
         Default constructor results in default settings
@@ -53,6 +54,10 @@ class StateSettings:
                 determines if a simple takeoff procedure should be executed for testing
             num_waypoints: int
                 Number of waypoints, extracted from SUAS mission plan
+            waypoints_bool: bool
+                Determines if waypoint integration test will be run
+            obstacle_avoidance: bool
+                Determines if obstacle avoidance integration test will be run
             title: str
                 Title of current flight mission, for logging purposes
             description: str
@@ -64,6 +69,8 @@ class StateSettings:
         """
         self.__simple_takeoff: bool = takeoff_bool
         self.__num_waypoints: int = num_waypoints
+        self.__enable_waypoints: bool = waypoints_bool
+        self.__enable_obstacle_avoidance: bool = obstacle_avoidance
         self.__run_title: str = title
         self.__run_description: str = description
 
@@ -132,6 +139,31 @@ class StateSettings:
             None
         """
         self.__num_waypoints = waypoints
+
+    @enable_waypoints.setter
+    def enable_waypoints(self, waypoints_bool: bool) -> None:
+        """
+        Setter for if Waypoint flight integration test is enabled
+
+        Parameters
+        ----------
+            waypoints_bool: bool
+                Determines if integration test will be active
+        """
+        self.__enable_waypoints = waypoints_bool
+
+    # ---- Obstacle Avoidance Settings ---- #
+    @enable_obstacle_avoidance.setter
+    def enable_obstacle_avoidance(self, obs_avoid: bool) -> None:
+        """
+        Setter for Obstacle Avoidance integration test
+
+        Parameters
+        ----------
+            obs_avoid: bool
+                Determines if obstacle avoidance integration test will be run
+        """
+        self.__enable_obstacle_avoidance = obs_avoid
 
     # ---- Other settings ---- #
     @property
