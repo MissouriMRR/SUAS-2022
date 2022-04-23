@@ -64,3 +64,15 @@ def all_feet_to_meters(obstacles):
     for obstacle in obstacles:
         obstacle["radius"] *= 0.3048  # covert feet to meters
     return obstacles
+
+
+def path_to_latlon(path, zone_num, zone_char):
+    gps_path = []
+    for point in path:
+        gps_path.append(utm.to_latlon(point.x, point.y, zone_num, zone_char))
+    return gps_path
+
+
+def get_zone_info(boundary):
+    # todo handle multiple zones
+    return boundary[0]["utm_zone_number"], boundary[0]["utm_zone_letter"]

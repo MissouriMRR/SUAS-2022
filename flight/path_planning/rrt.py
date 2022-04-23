@@ -17,27 +17,25 @@ NEIGHBORHOOD = 200  # meters
 ITERATIONS = 10000  # max number of iterations before failing to find a path
 ITERATIONS_AFTER = 100  # max number of iterations performed in the smaller area
 
-flyZones = [
-    {
-        "altitudeMin": 100.0,
-        "altitudeMax": 750.0,
-        "boundaryPoints": [
-            {"latitude": 38.1462694444444, "longitude": -76.4281638888889},
-            {"latitude": 38.151625, "longitude": -76.4286833333333},
-            {"latitude": 38.1518888888889, "longitude": -76.4314666666667},
-            {"latitude": 38.1505944444444, "longitude": -76.4353611111111},
-            {"latitude": 38.1475666666667, "longitude": -76.4323416666667},
-            {"latitude": 38.1446666666667, "longitude": -76.4329472222222},
-            {"latitude": 38.1432555555556, "longitude": -76.4347666666667},
-            {"latitude": 38.1404638888889, "longitude": -76.4326361111111},
-            {"latitude": 38.1407194444444, "longitude": -76.4260138888889},
-            {"latitude": 38.1437611111111, "longitude": -76.4212055555556},
-            {"latitude": 38.1473472222222, "longitude": -76.4232111111111},
-            {"latitude": 38.1461305555556, "longitude": -76.4266527777778},
-            {"latitude": 38.1462694444444, "longitude": -76.4281638888889},
-        ],
-    }
-][0]
+flyZones = {
+    "altitudeMin": 100.0,
+    "altitudeMax": 750.0,
+    "boundaryPoints": [
+        {"latitude": 38.1462694444444, "longitude": -76.4281638888889},
+        {"latitude": 38.151625, "longitude": -76.4286833333333},
+        {"latitude": 38.1518888888889, "longitude": -76.4314666666667},
+        {"latitude": 38.1505944444444, "longitude": -76.4353611111111},
+        {"latitude": 38.1475666666667, "longitude": -76.4323416666667},
+        {"latitude": 38.1446666666667, "longitude": -76.4329472222222},
+        {"latitude": 38.1432555555556, "longitude": -76.4347666666667},
+        {"latitude": 38.1404638888889, "longitude": -76.4326361111111},
+        {"latitude": 38.1407194444444, "longitude": -76.4260138888889},
+        {"latitude": 38.1437611111111, "longitude": -76.4212055555556},
+        {"latitude": 38.1473472222222, "longitude": -76.4232111111111},
+        {"latitude": 38.1461305555556, "longitude": -76.4266527777778},
+        {"latitude": 38.1462694444444, "longitude": -76.4281638888889},
+    ],
+}
 
 waypoints = [
     {"latitude": 38.1446916666667, "longitude": -76.4279944444445, "altitude": 200.0},
@@ -146,36 +144,6 @@ class Graph:
 
     def randomPosition(self, boundary):
         return get_random_point_in_polygon(boundary)
-
-
-def rrt(startpos, endpos, boundary, obstacles):
-    G = Graph(startpos, endpos)
-
-    for _ in range(ITERATIONS):
-        q_rand = G.randomPosition(boundary)
-        if intersects_obstacle(q_rand, obstacles):
-            continue
-
-        q_near, q_near_index = nearest(G, q_rand, obstacles)
-        if q_near is None:
-            continue
-
-        q_new = new_vertex(q_rand, q_near, STEP_SIZE)
-
-        q_new_index = G.add_vex(q_new)
-        dist = q_new.distance(q_near)
-        G.add_edge(q_new_index, q_near_index, dist)
-
-        # finish condition
-        # must be within some distance of endpos
-        dist = q_new.distance(G.endpos)
-        if dist <= STEP_SIZE:
-            end_index = G.add_vex(G.endpos)
-            G.add_edge(q_new_index, end_index, dist)
-            G.success = True
-            print("success")
-            break
-    return G
 
 
 def RRT_star(startpos, endpos, boundary, obstacles, informed_boundary_set=False):

@@ -38,13 +38,6 @@ def plot(obstacles, boundary, G=None, path=None, ellr=None, informed_boundary=No
         path_y = [p.y for p in path]
         plt.plot(path_x, path_y, "bo-")
 
-    # plot informed bounds
-    # if ellr is not None:
-    #     ellr_coords = list(ellr.exterior.coords)
-    #     ellr_x = [p[0] for p in ellr_coords]
-    #     ellr_y = [p[1] for p in ellr_coords]
-    #     plt.plot(ellr_x, ellr_y, "ro-")
-
     # plot informed boundary
     if informed_boundary is not None:
         informed_boundary_coords = list(informed_boundary.exterior.coords)
