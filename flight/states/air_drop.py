@@ -1,9 +1,9 @@
 """State to maneuver the drone to Air Drop location and release UGV"""
 import logging
 from mavsdk import System
-from ..state_settings import StateSettings
-from state import State
-from states.land import Land
+from flight.state_settings import StateSettings
+from flight.states.state import State
+from flight.states.land import Land
 
 
 class AirDrop(State):
@@ -12,7 +12,7 @@ class AirDrop(State):
 
     Attributes
     ----------
-        N/A
+        None
 
     Methods
     -------
@@ -30,7 +30,7 @@ class AirDrop(State):
 
         Returns
         -------
-            Land : State
+            Land
                 State in which drone returns to takeoff location and lands
         """
         return Land(self.state_settings)

@@ -9,38 +9,19 @@ class StateSettings:
     """
     Initialize settings for state machine
 
+    Attributes
+    ----------
+        num_waypoints: int
+            Number of waypoints on flight plan
+        run_title: str
+            Title of Competition
+        run_description: str
+            Description for Competition
+
     Methods
     -------
         __init__
             Sets preliminary values for SUAS overheads
-        @Property
-        simple_takeoff() -> bool
-            Setter to determine if testing takeoff procedure desired
-        num_waypoints() -> int
-            Sets the number of waypoints in the competition
-        run_title() -> str
-            Sets the name of the current flight for logging
-        run_description() -> str
-            Sets the description of current flight mission
-
-        @Setters
-        simple_takeoff() -> None
-            Enables access to status of simple_takeoff
-        num_waypoints() -> None
-            Enables access to number of waypoints in the competition
-        run_title() -> None
-            Enables access to description of current flight mission
-        run_description() -> None
-            Enables access to description of current flight mission
-
-    Attributes
-    ----------
-        __num_waypoints: int
-            Number of waypoints on flight plan
-        __run_title: str
-            Title of Competition
-        __run_description: str
-            Description for Competition
     """
     def __init__(self, takeoff_bool: bool = False, num_waypoints: int = DEFAULT_WAYPOINTS,
                  title: str = DEFAULT_RUN_TITLE, description: str = DEFAULT_RUN_DESCRIPTION) -> None:
@@ -57,10 +38,6 @@ class StateSettings:
                 Title of current flight mission, for logging purposes
             description: str
                 Description of current flight mission, for logging purposes
-
-        Returns
-        -------
-            None
         """
         self.__simple_takeoff: bool = takeoff_bool
         self.__num_waypoints: int = num_waypoints
@@ -72,10 +49,6 @@ class StateSettings:
     def simple_takeoff(self) -> bool:
         """
         Establishes simple_takeoff as a private member variable
-
-        Parameters
-        ----------
-            N/A
 
         Returns
         -------
@@ -93,10 +66,6 @@ class StateSettings:
         ----------
             simple_takeoff: bool
                 True for drone to go straight up, False to behave normally
-
-        Returns
-        -------
-            None
         """
         self.__simple_takeoff = simple_takeoff
 
@@ -105,10 +74,6 @@ class StateSettings:
     def num_waypoints(self) -> int:
         """
         Establishes num_waypoints as private member variable
-
-        Parameters
-        ----------
-            N/A
 
         Returns
         -------
@@ -126,10 +91,6 @@ class StateSettings:
         ----------
             waypoints: int
                 Number of waypoints present in mission plan
-
-        Returns
-        -------
-            None
         """
         self.__num_waypoints = waypoints
 
@@ -138,10 +99,6 @@ class StateSettings:
     def run_title(self) -> str:
         """
         Set a title for the run/test to be output in logging
-
-        Parameters
-        ----------
-            N/A
 
         Returns
         -------
@@ -159,10 +116,6 @@ class StateSettings:
         ----------
             title: str
                 Desired title for the flight
-
-        Returns
-        -------
-            None
         """
         self.__run_title = title
 
@@ -170,10 +123,6 @@ class StateSettings:
     def run_description(self) -> str:
         """
         Set a description for the run/test to be output in logging
-
-        Parameters
-        ----------
-            N/A
 
         Returns
         -------
@@ -191,9 +140,5 @@ class StateSettings:
         ----------
             description: str
                 Written description for flight mission for logs
-
-        Returns
-        -------
-            None
         """
         self.__run_description = description
