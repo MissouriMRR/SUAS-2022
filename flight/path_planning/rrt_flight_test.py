@@ -65,19 +65,25 @@ if __name__ == "__main__":
     obstacle_shapes = helpers.circles_to_shape(obstacles)
     waypoints_points = helpers.coords_to_points(waypoints)
 
-    # Magic
-    start = waypoints_points[0]  # 4
-    goal = waypoints_points[1]  # 5
-    start_time = time.time()
-    G, ellr, informed_boundary = rrt.RRT_star(start, goal, boundary_shape, obstacle_shapes)
-    print(f"rrt runtime = {(time.time()-start_time):.3f}s")
+    final_route = []
 
-    if G.success:
-        path = rrt.dijkstra(G)
-        path = rrt.relax_path(path, obstacle_shapes)
-        plotter.plot(obstacles, boundary, G, path, ellr, informed_boundary)
-        gps_path = helpers.path_to_latlon(path, zone_num, zone_char)
-        print(gps_path)
-    else:
-        print("major error! could not find a path!")
-        plotter.plot(obstacles, boundary, G, ellr, informed_boundary)
+    # run rrt on each pair of waypoints
+    for i in range(len(waypoints_points) - 1):
+        print(f"finding path between waypoints {i} and {i+1}")
+        start = waypoints_points[i]
+        goal = waypoints_points[i + 1]
+        start_time = time.time()
+        G, ellr, informed_boundary = rrt.RRT_star(start, goal, boundary_shape, obstacle_shapes)
+        print(f"rrt runtime = {(time.time()-start_time):.3f}s")
+
+        if G.success:
+            path = rrt.dijkstra(G)
+            path = rrt.relax_path(path, obstacle_shapes)
+            # plotter.plot(obstacles, boundary, G, path, ellr, informed_boundary)
+            gps_path = helpers.path_to_latlon(path, zone_num, zone_char)
+            final_route.append(gps_path)
+        else:
+            print("major error! could not find a path!")
+            # plotter.plot(obstacles, boundary, G, ellr, informed_boundary)
+
+    print(final_route)
