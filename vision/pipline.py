@@ -11,7 +11,11 @@ import cv2
 import numpy as np
 
 parent_dir = os.path.dirname(os.path.abspath(__file__))
-stitch_dir = parent_dir + "\mapping"
+
+# Images for stitching
+stitch_dir = parent_dir + "\mapping\images"
+
+# Images for odlc
 image_dir = parent_dir + "\images"
 
 from mapping.image_stitcher import Stitcher
