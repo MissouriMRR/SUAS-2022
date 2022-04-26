@@ -2,7 +2,8 @@
 This has code to identify which shape (from the SUAS list of shapes) is present
 this file has the function id_shape() that takes an image that has been cropped using a
 bounding box algorithm. Refer to its documentation. All other functions are helper
-functions to make stuff nicer, maybe they could be useful to you??
+functions to make stuff nicer, please see id_shape() docstring to see potential
+ability to skip redundant img pre-processing
 """
 from typing import Optional, Tuple, Dict
 import cv2
@@ -11,13 +12,13 @@ import numpy.typing as npt
 
 
 ODLC_SHAPES: Dict[int, str] = {
-        3: "TRIANGLE",
-        4: "quad",
-        5: "PENTAGON",
-        6: "HEXAGON",
-        7: "HEPTAGON",
-        8: "OCTAGON",
-    }
+    3: "TRIANGLE",
+    4: "quad",
+    5: "PENTAGON",
+    6: "HEXAGON",
+    7: "HEPTAGON",
+    8: "OCTAGON",
+}
 
 
 ODLC_COLORS: Tuple[Tuple[npt.NDArray[np.int64], str], ...] = (
@@ -257,7 +258,8 @@ def find_color_in_shape(
     shape: npt.NDArray[np.intc],
 ) -> npt.NDArray[np.uint8]:
     """
-    Not written yet, i just need pylint to shut up for a sec
+    takes the original (still cropped) image and the shape in question and will
+    pick a color off of it and return it as a 1 pixel BGR image
     """
     height: int
     width: int
@@ -270,9 +272,9 @@ def find_color_in_shape(
         point = [x, height // 2]
         if cv2.pointPolygonTest(shape, point, False) == 0:
             if start == -1:
-                start = x + 4
+                start = x
             else:
-                end = x - 4
+                end = x
                 break
 
     line: npt.NDArray[np.uint8] = img_param[start:end, height // 2, :]
@@ -283,24 +285,25 @@ def find_color_in_shape(
     _2, label, center = cv2.kmeans(
         floaty_line, 2, bestLabels=None, criteria=term_criteria, attempts=10, flags=0
     )
-    # print(label, type(label))
-    # print(center, type(center))
 
     return np.array([np.uint8(center[label[0]])])
 
 
-def parse_color(color: npt.NDArray[np.uint8]) -> str:
-    # print(color, type(color))
+def parse_color(color: npt.NDArray[np.uint8]) -> Optional[str]:
+    """
+    takes in a 1 pixel bgr image and will convert to hsv to compare it to a list of
+    color ranges in ODLC_COLORS and will return the matching string in ODLC_COLORS
+    or none if no colors match
+    """
     hsv_color: npt.NDArray[np.uint8] = cv2.cvtColor(color, cv2.COLOR_BGR2HSV)
-    # print(hsv_color, type(hsv_color))
     for pair in ODLC_COLORS:
-        # print(hsv_color[0, 0], pair[0][0], pair[0][1])
-        if (hsv_color[0, 0, 0] in range(pair[0][1, 0], pair[0][0, 0])
-        and hsv_color[0, 0, 1] in range(pair[0][1, 1], pair[0][0, 1])
-        and hsv_color[0, 0, 2] in range(pair[0][1, 2], pair[0][0, 2])
+        if (
+            hsv_color[0, 0, 0] in range(pair[0][1, 0], pair[0][0, 0])
+            and hsv_color[0, 0, 1] in range(pair[0][1, 1], pair[0][0, 1])
+            and hsv_color[0, 0, 2] in range(pair[0][1, 2], pair[0][0, 2])
         ):
             return pair[1]
-    raise RuntimeError("Color failed all checks, make sure it's from an ODLC shape")
+    return None
 
 
 def id_shape(
@@ -308,7 +311,8 @@ def id_shape(
     denoised: Optional[npt.NDArray[np.uint8]] = None,
     edge_detected: Optional[npt.NDArray[np.uint8]] = None,
     cnts: Optional[Tuple[npt.NDArray[np.intc], ...]] = None,
-) -> Tuple[str, str]:
+    find_color: bool = True,
+) -> Tuple[str, Optional[str]]:
     """
     this is the main driver function for finding out what a given shape is. It assumes that the
     given image is a cropped image of just the bounding box arround the shape to be identified
@@ -331,12 +335,17 @@ def id_shape(
         parameter. The contour should be passed inside of a tuple, so that if multiple contours
         are within the bounding box for the shape then my code can pick out the most relevant
         (biggest) one.
+    find_color: bool
+        A flag to determine whether the function to identify the color of the shape should be used
+        True is default and will find the color.
 
     returns
     ---------
-    will return one of: "star" "plus" "quarter-circle" "semi-circle" "circle" "triangle" "square"
-    "rectangle" "trapezoid" "pentagon" "hexagon" "heptagon" or "octogon" depending on the shape
-    (unless it raises an error, see below)
+    Will return a tuple of 2 strings (unless it raises an error, see below) in the form of
+    (shape_name, shape_color) unless find_color is set to False then will be (shape_name, None)
+    will return one of: "STAR" "PLUS" "QUARTER_CIRCLE" "SEMI_CIRCLE" "CIRCLE" "TRIANGLE" "SQUARE"
+    "RECTANGLE" "TRAPEZOID" "PENTAGON" "HEXAGON" "HEPTAGON" or "OCTOGON" depending on the shape
+    The color element in the returned tuple will also be false if the color could not be matched
 
     raises
     -------
@@ -371,18 +380,20 @@ def id_shape(
 
     if shape_name is None:
         shape_name = _check_polygons(approx=approx)
-    
+
     if shape_name is not None:
-        color_name: str = parse_color(find_color_in_shape(img_param, shape))
+        color_name: Optional[str] = None
+        if find_color:
+            color_name = parse_color(find_color_in_shape(img_param, shape))
         return shape_name, color_name
     raise RuntimeError("Shape failed all checks, make sure it is not a tree or something")
 
 
 if __name__ == "__main__":
     img: npt.NDArray[np.uint8] = cv2.imread(
-        "C:/Users/natem/code/multirotor/standard-object-detection-testing/quartercircle.jpg"
+        "this will crash if you try to run, put the path to a test img here"
     )
     cv2.imshow("img", img)
     cv2.waitKey(0)
-
+    # if you have already done pre-processing you can add it, see id_shape() docs
     print(id_shape(img))
