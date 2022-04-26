@@ -10,6 +10,16 @@ import numpy as np
 import numpy.typing as npt
 
 
+ODLC_SHAPES: Dict[int, str] = {
+        3: "TRIANGLE",
+        4: "quad",
+        5: "PENTAGON",
+        6: "HEXAGON",
+        7: "HEPTAGON",
+        8: "OCTAGON",
+    }
+
+
 ODLC_COLORS: Tuple[Tuple[npt.NDArray[np.int64], str], ...] = (
     (np.array([[180, 18, 255], [0, 0, 231]]), "WHITE"),
     (np.array([[180, 255, 30], [0, 0, 0]]), "BLACK"),
@@ -226,16 +236,8 @@ def _check_polygons(approx: npt.NDArray[np.intc]) -> Optional[str]:
     this will check for all of the easy shapes once all of the difficult ones have been eliminated
     """
     shape_name: Optional[str] = None
-    shape_names: Dict[int, str] = {
-        3: "TRIANGLE",
-        4: "quad",
-        5: "PENTAGON",
-        6: "HEXAGON",
-        7: "HEPTAGON",
-        8: "OCTAGON",
-    }
 
-    shape_name = shape_names.get(len(approx))
+    shape_name = ODLC_SHAPES.get(len(approx))
 
     if shape_name == "quad":
         angles = get_angles(approx)
@@ -250,13 +252,12 @@ def _check_polygons(approx: npt.NDArray[np.intc]) -> Optional[str]:
     return shape_name
 
 
-def find_colors_in_shape(
+def find_color_in_shape(
     img_param: npt.NDArray[np.uint8],
-    # cnts: Tuple[npt.NDArray[np.intc], ...],
     shape: npt.NDArray[np.intc],
-) -> None:
+) -> npt.NDArray[np.uint8]:
     """
-    Not written yet, i just need pylint to shut up for a sec.
+    Not written yet, i just need pylint to shut up for a sec
     """
     height: int
     width: int
@@ -277,14 +278,29 @@ def find_colors_in_shape(
     line: npt.NDArray[np.uint8] = img_param[start:end, height // 2, :]
 
     term_criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 10, 1.0)
-    floaty_line: npt.NDArray[np.float32] = np.float32(line)
+    floaty_line = np.float32(line)
 
     _2, label, center = cv2.kmeans(
         floaty_line, 2, bestLabels=None, criteria=term_criteria, attempts=10, flags=0
     )
+    # print(label, type(label))
+    # print(center, type(center))
 
-    clusters = np.uint8(center)[label.flatten()]
-    clusters = clusters.reshape((line.shape))
+    return np.array([np.uint8(center[label[0]])])
+
+
+def parse_color(color: npt.NDArray[np.uint8]) -> str:
+    # print(color, type(color))
+    hsv_color: npt.NDArray[np.uint8] = cv2.cvtColor(color, cv2.COLOR_BGR2HSV)
+    # print(hsv_color, type(hsv_color))
+    for pair in ODLC_COLORS:
+        # print(hsv_color[0, 0], pair[0][0], pair[0][1])
+        if (hsv_color[0, 0, 0] in range(pair[0][1, 0], pair[0][0, 0])
+        and hsv_color[0, 0, 1] in range(pair[0][1, 1], pair[0][0, 1])
+        and hsv_color[0, 0, 2] in range(pair[0][1, 2], pair[0][0, 2])
+        ):
+            return pair[1]
+    raise RuntimeError("Color failed all checks, make sure it's from an ODLC shape")
 
 
 def id_shape(
@@ -292,7 +308,7 @@ def id_shape(
     denoised: Optional[npt.NDArray[np.uint8]] = None,
     edge_detected: Optional[npt.NDArray[np.uint8]] = None,
     cnts: Optional[Tuple[npt.NDArray[np.intc], ...]] = None,
-) -> str:
+) -> Tuple[str, str]:
     """
     this is the main driver function for finding out what a given shape is. It assumes that the
     given image is a cropped image of just the bounding box arround the shape to be identified
@@ -355,9 +371,10 @@ def id_shape(
 
     if shape_name is None:
         shape_name = _check_polygons(approx=approx)
-    find_colors_in_shape(img_param=img_param, shape=shape)
+    
     if shape_name is not None:
-        return shape_name
+        color_name: str = parse_color(find_color_in_shape(img_param, shape))
+        return shape_name, color_name
     raise RuntimeError("Shape failed all checks, make sure it is not a tree or something")
 
 
