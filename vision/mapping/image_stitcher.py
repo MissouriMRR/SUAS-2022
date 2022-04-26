@@ -8,6 +8,7 @@ from typing import List, Tuple
 import numpy.typing as npt
 import numpy as np
 import cv2
+import pyproj  # pylint: disable=W0611
 
 
 class Stitcher:
@@ -66,8 +67,8 @@ class Stitcher:
             final_image = self.warp_images(img, final_image, matches)
 
             ## Debug Code: Shows each iteration and which iteration stitcher is on # pylint: disable=fixme
-            # print("Iteration:", i)
-            # cv2.imshow("WIP Final", self.final_image)
+            # test = resize(final_image, 30)
+            # cv2.imshow("WIP Final", test)
             # cv2.waitKey(0)
 
         # Crop final image of black space
@@ -266,11 +267,12 @@ class Stitcher:
 
         # Will loop until there are no more non zero pixels
         while cv2.countNonZero(sub) > black_pixels:
-            min_rect = cv2.erode(min_rect, None, iterations=10)
+            min_rect = cv2.erode(min_rect, None, iterations=50)
             sub = cv2.subtract(min_rect, thresh)
 
             ## Debug Code: Shows the crop and prints the number of black pixels # pylint: disable=fixme
-            # cv2.imshow("TEST", sub)
+            # test = resize(sub, 70)
+            # cv2.imshow("TEST", test)
             # cv2.waitKey(0)
             # print(cv2.countNonZero(sub))
 
@@ -307,6 +309,29 @@ class Stitcher:
         raise NotImplementedError("Function not Implemented")
 
 
+def resize(img: npt.NDArray[np.uint8], scale: int) -> npt.NDArray[np.uint8]:
+    """
+    Resizes Image to the scale amount of original image.
+
+    Parameters
+    ----------
+    img: npt.NDArray[np.uint8]
+        Final image to be cropped.
+    scale: int
+        The amount of remaining image.
+
+    Returns
+    -------
+    npt.NDArray[np.uint8]
+        resized image.
+    """
+    scale_percent: int = scale  # percent of original size
+    wid: int = int(img.shape[1] * scale_percent / 100)
+    hei: int = int(img.shape[0] * scale_percent / 100)
+    dim: Tuple[int, int] = (wid, hei)
+    return cv2.resize(img, dim, interpolation=cv2.INTER_AREA)
+
+
 if __name__ == "__main__":
     stitch: Stitcher = Stitcher()
 
@@ -316,14 +341,9 @@ if __name__ == "__main__":
     args: argparse.Namespace = parser.parse_args()
 
     stitch.image_path = args.images
-    final: npt.NDArray[np.uint8] = stitch.multiple_image_stitch()
+    final = stitch.multiple_image_stitch()
 
-    SCALE_PERCENT: int = 100  # percent of original size
-    wid: int = int(final.shape[1] * SCALE_PERCENT / 100)
-    hei: int = int(final.shape[0] * SCALE_PERCENT / 100)
-    dim: Tuple[int, int] = (wid, hei)
-
-    final = cv2.resize(final, dim, interpolation=cv2.INTER_AREA)
+    final = resize(final, 30)
 
     cv2.imshow("Final.jpg", final)
     cv2.waitKey(0)
