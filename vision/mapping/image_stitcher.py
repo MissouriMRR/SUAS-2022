@@ -267,7 +267,7 @@ class Stitcher:
 
         # Will loop until there are no more non zero pixels
         while cv2.countNonZero(sub) > black_pixels:
-            min_rect = cv2.erode(min_rect, None, iterations=10)
+            min_rect = cv2.erode(min_rect, None, iterations=50)
             sub = cv2.subtract(min_rect, thresh)
 
             ## Debug Code: Shows the crop and prints the number of black pixels # pylint: disable=fixme
