@@ -15,7 +15,8 @@ from vision.common.bounding_box import BoundingBox, ObjectType
 
 def preprocess_emg_obj(img: npt.NDArray[np.uint8]) -> npt.NDArray[np.uint8]:
     """
-    Preprocessing to increase accuracy of emergent object detection.
+    Preprocess image containing the emergent object
+    to increase accuracy of emergent object detection.
 
     Parameters
     ----------
@@ -25,7 +26,7 @@ def preprocess_emg_obj(img: npt.NDArray[np.uint8]) -> npt.NDArray[np.uint8]:
     Returns
     -------
     resized : npt.NDArray[np.uint8]
-        the preprocessed image
+        the image containing the emergent object after preprocessing
     """
 
     # Resize image to increase accuracy and reduce processing time
@@ -61,15 +62,14 @@ def get_emg_bounds(img: npt.NDArray[np.uint8]) -> Optional[BoundingBox]:
     win_stride: Tuple[int, int] = (4, 4)  # sliding window step size x, y
     padding: Tuple[int, int] = (8, 8)  # x, y padding
     scale: float = 1.05  # determines size of image pyramid
-
-    rects: List[Tuple[int, int, int, int]]
+    rects: List[Tuple[int, int, int, int]]  # bounds returned by hog
     rects, _ = hog.detectMultiScale(img, winStride=win_stride, padding=padding, scale=scale)
 
     # return none if no object found or more than one found
     if len(rects) != 1:
         return None
 
-    # Convert to bounding boxes
+    # Convert rectangle to bounding box
     x: int
     y: int
     width: int
@@ -95,7 +95,7 @@ def crop_emg_obj(img: npt.NDArray[np.uint8], bbox: BoundingBox) -> npt.NDArray[n
     img : npt.NDArray[np.uint8]
         the image containing the emergent object
     bbox : BoundingBox
-        the bounding box containing the detected emergent object
+        the bounding box specifying the detected emergent object
 
     Returns
     -------
@@ -104,6 +104,7 @@ def crop_emg_obj(img: npt.NDArray[np.uint8], bbox: BoundingBox) -> npt.NDArray[n
     """
     cropped_img: npt.NDArray[np.uint8] = np.copy(img)
 
+    # get coord range from bounding box
     x_min: int
     x_max: int
     x_min, x_max = bbox.get_x_extremes()
@@ -111,6 +112,7 @@ def crop_emg_obj(img: npt.NDArray[np.uint8], bbox: BoundingBox) -> npt.NDArray[n
     y_max: int
     y_min, y_max = bbox.get_y_extremes()
 
+    # crop image around bounds of emergent object
     cropped_img = cropped_img[y_min:y_max, x_min:x_max]
 
     return cropped_img
@@ -178,9 +180,8 @@ if __name__ == "__main__":
         raise RuntimeError("No file specified.")
     file_name: str = args.file_name
 
-    show_imgs: bool = True
-    if args.skip_show_img:
-        show_imgs = False
+    # Whether to show images during run
+    show_imgs: bool = not args.skip_show_img
 
     # Read in the image
     test_img: npt.NDArray[np.uint8] = cv2.imread(file_name)
@@ -195,7 +196,7 @@ if __name__ == "__main__":
 
     emg_box: Optional[BoundingBox] = get_emg_bounds(processed_img)
 
-    if emg_box is not None:
+    if emg_box is not None:  # found the emergent object
         print(emg_box)
 
         # Show the found bounding box
@@ -221,5 +222,5 @@ if __name__ == "__main__":
             cv2.waitKey(0)
             cv2.destroyAllWindows()
 
-    else:
+    else:  # no emergent object detected in image
         print("No Object Found")
