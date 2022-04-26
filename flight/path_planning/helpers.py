@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import List, Tuple, Dict
 import utm
 from shapely.geometry import Point, Polygon
 
@@ -36,14 +36,14 @@ def all_latlon_to_utm(list_of_coords: list[dict]) -> list[dict]:
     return list_of_coords
 
 
-def coords_to_shape(coords):
+def coords_to_shape(coords: List[Dict[str, float]]) -> Polygon:
     poly_coords = [(point["utm_x"], point["utm_y"]) for point in coords]
     shape = Polygon(poly_coords)
     return shape
 
 
-def circles_to_shape(circles):
-    circle_shapes = []
+def circles_to_shape(circles: List[Dict[str, float]]) -> List[Point]:
+    circle_shapes: List[Point] = []
     for circle in circles:
         x = circle["utm_x"]
         y = circle["utm_y"]
@@ -53,26 +53,27 @@ def circles_to_shape(circles):
     return circle_shapes
 
 
-def coords_to_points(coords):
-    points = []
+def coords_to_points(coords: List[Dict[str, float]]) -> List[Point]:
+    points: List[Point] = []
     for coord in coords:
         points.append(Point(coord["utm_x"], coord["utm_y"]))
     return points
 
 
-def all_feet_to_meters(obstacles):
+def all_feet_to_meters(obstacles: List[Dict[str, float]]) -> List[Dict[str, float]]:
+    FEET_TO_METERS_MULTIPLIER = 0.3048
     for obstacle in obstacles:
-        obstacle["radius"] *= 0.3048  # covert feet to meters
+        obstacle["radius"] *= FEET_TO_METERS_MULTIPLIER
+        obstacle["height"] *= FEET_TO_METERS_MULTIPLIER
     return obstacles
 
 
-def path_to_latlon(path, zone_num, zone_char):
-    gps_path = []
+def path_to_latlon(path: List[Point], zone_num: int, zone_letter: str) -> List[Tuple[float, float]]:
+    gps_path: List[Tuple[float, float]] = []
     for point in path:
-        gps_path.append(utm.to_latlon(point.x, point.y, zone_num, zone_char))
+        gps_path.append(utm.to_latlon(point.x, point.y, zone_num, zone_letter))
     return gps_path
 
 
-def get_zone_info(boundary):
-    # todo handle multiple zones
+def get_zone_info(boundary: Polygon) -> Tuple[int, str]:
     return boundary[0]["utm_zone_number"], boundary[0]["utm_zone_letter"]

@@ -1,5 +1,3 @@
-# Inspired by https://gist.github.com/Fnjn/58e5eaa27a3dc004c3526ea82a92de80
-
 import math
 import random
 import numpy as np
@@ -7,82 +5,70 @@ import shapely
 import helpers
 import time
 import plotter
-from typing import Tuple
+from typing import List, Tuple, Dict, Union, final
 from shapely.geometry import Point, Polygon, LineString
 from collections import deque
 
 
-STEP_SIZE = 100  # meters
-NEIGHBORHOOD = 200  # meters
-ITERATIONS = 10000  # max number of iterations before failing to find a path
-ITERATIONS_AFTER = 100  # max number of iterations performed in the smaller area
-
-flyZones = {
-    "altitudeMin": 100.0,
-    "altitudeMax": 750.0,
-    "boundaryPoints": [
-        {"latitude": 38.1462694444444, "longitude": -76.4281638888889},
-        {"latitude": 38.151625, "longitude": -76.4286833333333},
-        {"latitude": 38.1518888888889, "longitude": -76.4314666666667},
-        {"latitude": 38.1505944444444, "longitude": -76.4353611111111},
-        {"latitude": 38.1475666666667, "longitude": -76.4323416666667},
-        {"latitude": 38.1446666666667, "longitude": -76.4329472222222},
-        {"latitude": 38.1432555555556, "longitude": -76.4347666666667},
-        {"latitude": 38.1404638888889, "longitude": -76.4326361111111},
-        {"latitude": 38.1407194444444, "longitude": -76.4260138888889},
-        {"latitude": 38.1437611111111, "longitude": -76.4212055555556},
-        {"latitude": 38.1473472222222, "longitude": -76.4232111111111},
-        {"latitude": 38.1461305555556, "longitude": -76.4266527777778},
-        {"latitude": 38.1462694444444, "longitude": -76.4281638888889},
-    ],
-}
-
-waypoints = [
-    {"latitude": 38.1446916666667, "longitude": -76.4279944444445, "altitude": 200.0},
-    {"latitude": 38.1461944444444, "longitude": -76.4237138888889, "altitude": 300.0},
-    {"latitude": 38.1438972222222, "longitude": -76.42255, "altitude": 400.0},
-    {"latitude": 38.1417722222222, "longitude": -76.4251083333333, "altitude": 400.0},
-    {"latitude": 38.14535, "longitude": -76.428675, "altitude": 300.0},
-    {"latitude": 38.1508972222222, "longitude": -76.4292972222222, "altitude": 300.0},
-    {"latitude": 38.1514944444444, "longitude": -76.4313833333333, "altitude": 300.0},
-    {"latitude": 38.1505333333333, "longitude": -76.434175, "altitude": 300.0},
-    {"latitude": 38.1479472222222, "longitude": -76.4316055555556, "altitude": 200.0},
-    {"latitude": 38.1443333333333, "longitude": -76.4322888888889, "altitude": 200.0},
-    {"latitude": 38.1433166666667, "longitude": -76.4337111111111, "altitude": 300.0},
-    {"latitude": 38.1410944444444, "longitude": -76.4321555555556, "altitude": 400.0},
-    {"latitude": 38.1415777777778, "longitude": -76.4252472222222, "altitude": 400.0},
-    {"latitude": 38.1446083333333, "longitude": -76.4282527777778, "altitude": 200.0},
-]
-
-obstacles = [
-    {"latitude": 38.146689, "longitude": -76.426475, "radius": 150.0, "height": 750.0},
-    {"latitude": 38.142914, "longitude": -76.430297, "radius": 300.0, "height": 300.0},
-    {"latitude": 38.149504, "longitude": -76.43311, "radius": 100.0, "height": 750.0},
-    {"latitude": 38.148711, "longitude": -76.429061, "radius": 300.0, "height": 750.0},
-    {"latitude": 38.144203, "longitude": -76.426155, "radius": 50.0, "height": 400.0},
-    {"latitude": 38.146003, "longitude": -76.430733, "radius": 225.0, "height": 500.0},
-]
+STEP_SIZE: int = 100  # meters
+NEIGHBORHOOD_SIZE: int = 200  # meters
+MAX_ITERATIONS: int = 10000  # max number of iterations before failing to find a path
+INFORMED_ITERATIONS: int = 100  # number of iterations performed in the informed area
 
 
-def intersects_obstacle(shape, obstacles):
+class Graph:
+    def __init__(self, q_start: Point, q_goal: Point):
+        self.q_start = q_start
+        self.q_goal = q_goal
+
+        self.vertices = [q_start]
+        self.edges = []
+        self.success = False
+
+        self.vertex_to_index = {(q_start.x, q_start.y): 0}
+        self.neighbors = {0: []}
+        self.distances = {0: 0.0}
+
+    def add_vertex(self, q: Point) -> int:
+        try:
+            index: int = self.vertex_to_index[q]
+        except:
+            index: int = len(self.vertices)
+            self.vertices.append(q)
+            self.vertex_to_index[(q.x, q.y)] = index
+            self.neighbors[index] = []
+        return index
+
+    def add_edge(self, index1: int, index2: int, cost: float) -> None:
+        self.edges.append((index1, index2))
+        self.neighbors[index1].append((index2, cost))
+        self.neighbors[index2].append((index1, cost))
+
+    def random_position(self, boundary: Polygon) -> Point:
+        return get_random_point_in_polygon(boundary)
+
+
+def intersects_obstacle(shape: Union[Polygon, LineString], obstacles: List[Polygon]) -> bool:
     for obstacle in obstacles:
         if shape.intersection(obstacle):
             return True
     return False
 
 
-def nearest(G, q_rand, obstacles):
-    q_near = None
-    q_near_index = None
-    min_dist = float("inf")
+def nearest(G: Graph, q_rand: Point, obstacles: List[Polygon]) -> Tuple[Point, int]:
+    q_near: Point = None
+    q_near_index: int = None
+    min_dist: float = float("inf")
 
     for i, q in enumerate(G.vertices):
-        edge = LineString([q, q_rand])  # generate line between testing vertex and q_rand
+        edge: LineString = LineString(
+            [q, q_rand]
+        )  # generate line between testing vertex and q_rand
         if intersects_obstacle(edge, obstacles):  # ensure no collisions
             continue
 
         # find vertex with closest
-        dist = q.distance(q_rand)
+        dist: float = q.distance(q_rand)
         if dist < min_dist:
             min_dist = dist
             q_near = q
@@ -91,80 +77,52 @@ def nearest(G, q_rand, obstacles):
     return q_near, q_near_index
 
 
-def new_vertex(q_rand, q_near, STEP_SIZE):
+def new_vertex(q_rand: Point, q_near: Point, STEP_SIZE: int) -> Point:
     dirn = np.array(q_rand) - np.array(q_near)
     length = np.linalg.norm(dirn)
     dirn = (dirn / length) * min(STEP_SIZE, length)
 
-    q_new = Point(q_near.x + dirn[0], q_near.y + dirn[1])
+    q_new: Point = Point(q_near.x + dirn[0], q_near.y + dirn[1])
     return q_new
 
 
-def in_boundary(boundary, vertex):
+def in_boundary(boundary: Polygon, vertex: Point) -> bool:
     if boundary.contains(vertex):
         return True
     return False
 
 
-def get_random_point_in_polygon(poly):
-    minx, miny, maxx, maxy = poly.bounds
+def get_random_point_in_polygon(polygon: Polygon) -> Point:
+    minx, miny, maxx, maxy = polygon.bounds
     while True:
         p = Point(random.uniform(minx, maxx), random.uniform(miny, maxy))
-        if poly.contains(p):
+        if polygon.contains(p):
             return p
 
 
-class Graph:
-    def __init__(self, startpos, endpos):
-        self.startpos = startpos
-        self.endpos = endpos
-
-        self.vertices = [startpos]
-        self.edges = []
-        self.success = False
-
-        self.vex2idx = {(startpos.x, startpos.y): 0}
-        self.neighbors = {0: []}
-        self.distances = {0: 0.0}
-
-    def add_vex(self, pos):
-        try:
-            idx = self.vex2idx[pos]
-        except:
-            idx = len(self.vertices)
-            self.vertices.append(pos)
-            self.vex2idx[(pos.x, pos.y)] = idx
-            self.neighbors[idx] = []
-        return idx
-
-    def add_edge(self, idx1, idx2, cost):
-        self.edges.append((idx1, idx2))
-        self.neighbors[idx1].append((idx2, cost))
-        self.neighbors[idx2].append((idx1, cost))
-
-    def randomPosition(self, boundary):
-        return get_random_point_in_polygon(boundary)
-
-
-def RRT_star(startpos, endpos, boundary, obstacles, informed_boundary_set=False):
-    G = Graph(startpos, endpos)
+def rrt_star(
+    q_start: Point,
+    q_goal: Point,
+    boundary: Polygon,
+    obstacles: List[Point],
+    informed_boundary_set=False,
+) -> Tuple[Graph, Polygon]:
+    G: Graph = Graph(q_start, q_goal)
 
     ellr = None
     informed_boundary = None
 
     counter = 0
 
-    for i in range(ITERATIONS):
-        # print(i)
+    for i in range(MAX_ITERATIONS):
         if informed_boundary_set:
-            # print(f'Counter {counter}')
             counter += 1
 
-        if counter >= ITERATIONS_AFTER:
-            print(f"Iterated for {counter} additional times in the smaller area")
+        if counter >= INFORMED_ITERATIONS:
+            print(f"Iterated for {counter} additional times")
             break
 
-        q_rand = G.randomPosition(boundary)
+        q_rand = G.random_position(boundary)
         if intersects_obstacle(q_rand, obstacles):
             continue
 
@@ -174,7 +132,7 @@ def RRT_star(startpos, endpos, boundary, obstacles, informed_boundary_set=False)
 
         q_new = new_vertex(q_rand, q_near, STEP_SIZE)
 
-        q_new_index = G.add_vex(q_new)
+        q_new_index = G.add_vertex(q_new)
         dist = q_new.distance(q_near)
         G.add_edge(q_new_index, q_near_index, dist)
         G.distances[q_new_index] = G.distances[q_near_index] + dist
@@ -186,21 +144,21 @@ def RRT_star(startpos, endpos, boundary, obstacles, informed_boundary_set=False)
                 continue
 
             dist = vex.distance(q_new)
-            if dist > NEIGHBORHOOD:
+            if dist > NEIGHBORHOOD_SIZE:
                 continue
 
             line = LineString([vex, q_new])
             if intersects_obstacle(line, obstacles):
                 continue
 
-            idx = G.vex2idx[(vex.x, vex.y)]
+            idx = G.vertex_to_index[(vex.x, vex.y)]
             if G.distances[q_new_index] + dist < G.distances[idx]:
                 G.add_edge(idx, q_new_index, dist)
                 G.distances[idx] = G.distances[q_new_index] + dist
 
-        dist = q_new.distance(G.endpos)
+        dist = q_new.distance(G.q_goal)
         if dist <= STEP_SIZE:
-            endidx = G.add_vex(G.endpos)
+            endidx = G.add_vertex(G.q_goal)
             G.add_edge(q_new_index, endidx, dist)
             try:
                 G.distances[endidx] = min(G.distances[endidx], G.distances[q_new_index] + dist)
@@ -208,32 +166,29 @@ def RRT_star(startpos, endpos, boundary, obstacles, informed_boundary_set=False)
                 G.distances[endidx] = G.distances[q_new_index] + dist
 
             G.success = True
-            # print('success')
-            # break
 
             if not informed_boundary_set:
                 print(f"SUCCESS: Found a path after iterating {i} times")
 
                 informed_boundary_set = True
 
-                path = dijkstra(G)  # get path
-                ellr = informed_area(startpos, endpos, path)  # find informed area
+                path = get_path(G)  # get path
+                ellr = informed_area(q_start, q_goal, path)  # find informed area
 
                 informed_boundary = boundary.intersection(ellr)  # intersect with boundary
                 boundary = informed_boundary
                 print("Updated search area to the informed boundary")
 
-            # print('success')
-            # break
-
-    return G, ellr, informed_boundary
+    return G, informed_boundary
 
 
-def informed_area(q_start, q_goal, path):
-    expansion = 0  # initial expansion amount
-    expansion_rate = 10  # meters
-    buffer = 0  # meters
-    last_loop = False
+def informed_area(q_start: Point, q_goal: Point, path: List[Point]) -> Polygon:
+    expansion: int = 0  # initial expansion amount
+    expansion_rate: int = 10  # meters
+    buffer: int = 0  # meters
+    last_loop: bool = False
+
+    print("Generating informed area...")
 
     # Loop until the informed area expands enough to cover all points
     i = 0
@@ -265,7 +220,7 @@ def informed_area(q_start, q_goal, path):
         ellr = shapely.affinity.rotate(ell, ellipse[2])
 
         if last_loop:
-            print(f"expanded {i} times to meet goal")
+            print(f"Expanded ellipse {i} times to enclose path")
             return ellr
 
         if ellr.contains(LineString(path)):
@@ -277,15 +232,15 @@ def informed_area(q_start, q_goal, path):
     return ellr
 
 
-def dijkstra(G):
-    srcIdx = G.vex2idx[(G.startpos.x, G.startpos.y)]
-    dstIdx = G.vex2idx[(G.endpos.x, G.endpos.y)]
+def get_path(G: Graph) -> List[Point]:
+    src_index = G.vertex_to_index[(G.q_start.x, G.q_start.y)]
+    dst_index = G.vertex_to_index[(G.q_goal.x, G.q_goal.y)]
 
     # build dijkstra
     nodes = list(G.neighbors.keys())
     dist = {node: float("inf") for node in nodes}
     prev = {node: None for node in nodes}
-    dist[srcIdx] = 0
+    dist[src_index] = 0
 
     while nodes:
         curNode = min(nodes, key=lambda node: dist[node])
@@ -301,7 +256,7 @@ def dijkstra(G):
 
     # retrieve path
     path = deque()
-    curNode = dstIdx
+    curNode = dst_index
     while prev[curNode] is not None:
         path.appendleft(G.vertices[curNode])
         curNode = prev[curNode]
@@ -309,7 +264,7 @@ def dijkstra(G):
     return list(path)
 
 
-def relax_path(path, obstacles):
+def relax_path(path: List[Point], obstacles: List[Point]) -> List[Point]:
     if len(path) < 3:
         return path
 
@@ -331,31 +286,118 @@ def relax_path(path, obstacles):
     return path
 
 
-if __name__ == "__main__":
+def solve(
+    data_boundary: List[Dict[str, float]],
+    data_obstacles: List[Dict[str, float]],
+    data_waypoints: List[Dict[str, float]],
+    show_plot: bool = False,
+    debug: bool = False,
+):
     # Add utm coordinates to all
-    boundary = helpers.all_latlon_to_utm(flyZones["boundaryPoints"])
-    obstacles = helpers.all_latlon_to_utm(obstacles)
-    waypoints = helpers.all_latlon_to_utm(waypoints)
+    boundary: List[Dict[str, float]] = helpers.all_latlon_to_utm(data_boundary)
+    obstacles: List[Dict[str, float]] = helpers.all_latlon_to_utm(data_obstacles)
+    waypoints: List[Dict[str, float]] = helpers.all_latlon_to_utm(data_waypoints)
 
-    # Convert silly units to proper units
+    # Get zone data for main zone space
+    zone_num, zone_letter = helpers.get_zone_info(boundary)
+
+    # Convert obstacle height and radius from feet to meters
     obstacles = helpers.all_feet_to_meters(obstacles)
 
     # Create shapely representations of everything for use in algorithm
-    boundary_shape = helpers.coords_to_shape(boundary)
-    obstacle_shapes = helpers.circles_to_shape(obstacles)
-    waypoints_points = helpers.coords_to_points(waypoints)
+    boundary_shape: Polygon = helpers.coords_to_shape(boundary)
+    obstacle_shapes: List[Point] = helpers.circles_to_shape(obstacles)
+    waypoints_points: List[Point] = helpers.coords_to_points(waypoints)
 
-    # Magic
-    start = waypoints_points[4]
-    goal = waypoints_points[5]
-    start_time = time.time()
-    G, ellr, informed_boundary = RRT_star(start, goal, boundary_shape, obstacle_shapes)
-    print(f"rrt runtime = {(time.time()-start_time):.3f}s")
+    final_route: List[Tuple[float, float]] = []
 
-    if G.success:
-        path = dijkstra(G)
-        path = relax_path(path, obstacle_shapes)
-        plotter.plot(obstacles, boundary, G, path, ellr, informed_boundary)
-    else:
-        print("major error! could not find a path!")
-        plotter.plot(obstacles, boundary, G, ellr, informed_boundary)
+    start_time_final_route = time.time()
+
+    # run rrt on each pair of waypoints
+    for i in range(len(waypoints_points) - 1):
+        start = waypoints_points[i]
+        goal = waypoints_points[i + 1]
+
+        if not intersects_obstacle(LineString([start, goal]), obstacle_shapes):
+            print(f"Found direct path between waypoints {i} and {i+1}")
+            final_route.append(start)
+            final_route.append(goal)
+            continue
+
+        print(f"Finding path between waypoints {i} and {i+1}")
+        start_time = time.time()
+        G, informed_boundary = rrt_star(start, goal, boundary_shape, obstacle_shapes)
+        print(f"Solved in {(time.time()-start_time):.3f}s")
+
+        if G.success:
+            path = get_path(G)
+            path = relax_path(path, obstacle_shapes)
+            # Debug plot
+            if debug:
+                plotter.plot(
+                    obstacles, boundary, G=G, path=path, informed_boundary=informed_boundary
+                )
+            for p in path:
+                final_route.append(p)
+        else:
+            print(f"ERROR: Could not find a path after {MAX_ITERATIONS} iterations")
+
+    print(f"Total runtime: {(time.time()-start_time_final_route):.3f}s")
+
+    if show_plot:
+        plotter.plot(obstacles, boundary, path=final_route)
+
+    # last step converting back to lat lon
+    final_route_latlon: List[Tuple[float, float]] = helpers.path_to_latlon(
+        final_route, zone_num, zone_letter
+    )
+
+    return final_route_latlon
+
+
+if __name__ == "__main__":
+    data_boundary = [
+        {"latitude": 38.1462694444444, "longitude": -76.4281638888889},
+        {"latitude": 38.151625, "longitude": -76.4286833333333},
+        {"latitude": 38.1518888888889, "longitude": -76.4314666666667},
+        {"latitude": 38.1505944444444, "longitude": -76.4353611111111},
+        {"latitude": 38.1475666666667, "longitude": -76.4323416666667},
+        {"latitude": 38.1446666666667, "longitude": -76.4329472222222},
+        {"latitude": 38.1432555555556, "longitude": -76.4347666666667},
+        {"latitude": 38.1404638888889, "longitude": -76.4326361111111},
+        {"latitude": 38.1407194444444, "longitude": -76.4260138888889},
+        {"latitude": 38.1437611111111, "longitude": -76.4212055555556},
+        {"latitude": 38.1473472222222, "longitude": -76.4232111111111},
+        {"latitude": 38.1461305555556, "longitude": -76.4266527777778},
+        {"latitude": 38.1462694444444, "longitude": -76.4281638888889},
+    ]
+
+    data_waypoints = [
+        {"latitude": 38.1446916666667, "longitude": -76.4279944444445, "altitude": 200.0},
+        {"latitude": 38.1461944444444, "longitude": -76.4237138888889, "altitude": 300.0},
+        {"latitude": 38.1438972222222, "longitude": -76.42255, "altitude": 400.0},
+        {"latitude": 38.1417722222222, "longitude": -76.4251083333333, "altitude": 400.0},
+        {"latitude": 38.14535, "longitude": -76.428675, "altitude": 300.0},
+        {"latitude": 38.1508972222222, "longitude": -76.4292972222222, "altitude": 300.0},
+        {"latitude": 38.1514944444444, "longitude": -76.4313833333333, "altitude": 300.0},
+        {"latitude": 38.1505333333333, "longitude": -76.434175, "altitude": 300.0},
+        {"latitude": 38.1479472222222, "longitude": -76.4316055555556, "altitude": 200.0},
+        {"latitude": 38.1443333333333, "longitude": -76.4322888888889, "altitude": 200.0},
+        {"latitude": 38.1433166666667, "longitude": -76.4337111111111, "altitude": 300.0},
+        {"latitude": 38.1410944444444, "longitude": -76.4321555555556, "altitude": 400.0},
+        {"latitude": 38.1415777777778, "longitude": -76.4252472222222, "altitude": 400.0},
+        {"latitude": 38.1446083333333, "longitude": -76.4282527777778, "altitude": 200.0},
+    ]
+
+    data_obstacles = [
+        {"latitude": 38.146689, "longitude": -76.426475, "radius": 150.0, "height": 750.0},
+        {"latitude": 38.142914, "longitude": -76.430297, "radius": 300.0, "height": 300.0},
+        {"latitude": 38.149504, "longitude": -76.43311, "radius": 100.0, "height": 750.0},
+        {"latitude": 38.148711, "longitude": -76.429061, "radius": 300.0, "height": 750.0},
+        {"latitude": 38.144203, "longitude": -76.426155, "radius": 50.0, "height": 400.0},
+        {"latitude": 38.146003, "longitude": -76.430733, "radius": 225.0, "height": 500.0},
+    ]
+
+    route = solve(data_boundary, data_obstacles, data_waypoints, show_plot=True, debug=False)
+
+    print(route)

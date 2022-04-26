@@ -47,8 +47,8 @@ def plot(obstacles, boundary, G=None, path=None, ellr=None, informed_boundary=No
 
     # plot start and end points
     if G is not None:
-        plt.plot(G.startpos.x, G.startpos.y, c="red", marker="*")
-        plt.plot(G.endpos.x, G.endpos.y, c="red", marker="*")
+        plt.plot(G.q_start.x, G.q_start.y, c="red", marker="*")
+        plt.plot(G.q_goal.x, G.q_goal.y, c="red", marker="*")
 
     plt.gca().set_aspect(1)
     plt.show()
