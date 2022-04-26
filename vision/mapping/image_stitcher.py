@@ -8,7 +8,8 @@ from typing import List, Tuple
 import numpy.typing as npt
 import numpy as np
 import cv2
-import pyproj
+import pyproj  # pylint: disable=W0611
+
 
 class Stitcher:
     """
@@ -129,7 +130,6 @@ class Stitcher:
 
         # Set minimum match condition
         min_match_count: int = 10
-        print(len(best_matches))
 
         if len(best_matches) > min_match_count:
             # Convert keypoints to an argument for findHomography
