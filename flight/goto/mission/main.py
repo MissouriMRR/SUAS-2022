@@ -11,8 +11,20 @@ import logging
 import math
 import typing
 from typing import Dict,List
+import sys
 
 async def run() -> None:
+    """
+    This function is just a driver to test the goto function.
+
+    Parameters
+    ----------
+    None
+
+    Returns
+    -------
+    None
+    """
     #Put all latitudes, longitudes and altitudes into seperate arrays
     lats: List[float]=[]
     longs: List[float]=[]
@@ -31,44 +43,53 @@ async def run() -> None:
     drone: System = System()
     await drone.connect(system_address="udp://:14540")
 
+    #initilize drone configurations
+    await drone.action.set_takeoff_altitude(12)
+    await drone.action.set_maximum_speed(20)
+
     #connect to the drone
-    print("Waiting for drone to connect...")
+    logging.info("Waiting for drone to connect...")
     async for state in drone.core.connection_state():
         if state.is_connected:
-            print("Drone discovered!")
+            logging.info("Drone discovered!")
             break
 
-    print("Waiting for drone to have a global position estimate...")
+    logging.info("Waiting for drone to have a global position estimate...")
     async for health in drone.telemetry.health():
         if health.is_global_position_ok:
-            print("Global position estimate ok")
+            logging.info("Global position estimate ok")
             break
 
-    print("-- Arming")
+    logging.info("-- Arming")
     await drone.action.arm()
 
-    print("-- Taking off")
+    logging.info("-- Taking off")
     await drone.action.takeoff()
 
     #wait for drone to take off
-    await asyncio.sleep(20)
+    await asyncio.sleep(10)
 
     #move to each waypoint in mission
     for point in range(len(waypoints)):
-        await goto.move_to(drone,lats[point],longs[point],altitudes[point])
+        await goto.move_to(drone,lats[point],longs[point],altitudes[point],True)
 
     #return home
-    print("Last waypoint reached")
-    print("Returning to home")
+    logging.info("Last waypoint reached")
+    logging.info("Returning to home")
     await drone.action.return_to_launch()
     print("Staying connected, press Ctrl-C to exit")
-    
+
     #infinite loop till forced disconnect
     while True:
         await asyncio.sleep(1)
 
 
 if __name__ == "__main__":
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(run())
+    #Main driver of drone
+    try:
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(run())
+    except KeyboardInterrupt:
+        print("Program ended")
+        sys.exit(0)
 
