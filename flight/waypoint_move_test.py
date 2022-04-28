@@ -15,15 +15,8 @@ import sys
 
 async def run() -> None:
     """
-    This function is just a driver to test the goto function.
-
-    Parameters
-    ----------
-    None
-
-    Returns
-    -------
-    None
+    This function is just a driver to test the goto function and runs through the
+    entire waypoint section of the SUAS competition
     """
     #Put all latitudes, longitudes and altitudes into seperate arrays
     lats: List[float]=[]

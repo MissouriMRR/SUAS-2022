@@ -20,19 +20,15 @@ async def move_to(drone: System, latitude: float, longitude: float, altitude: fl
     drone: System 
         a drone object that has all offboard data needed for computation
     latitude: float 
-        a float containing the requested latittude to move to
+        a float containing the requested latitude to move to
     longitude: float 
         a float containing the requested longitude to move to
     altitude: float 
         a float contatining the requested altitude to go to (in feet)
-    slow_mode: bool
-        a boolean that dertermines if the drone will take less time checking its precise location
+    fast_mode: bool
+        a boolean that determines if the drone will take less time checking its precise location
         before moving on to another waypoint. If its true, it will move faster, if it is false,
         it will move at normal speed
-
-    Returns
-    -------
-    None
     """
     
 
