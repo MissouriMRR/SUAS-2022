@@ -87,7 +87,23 @@ def multi_rot_text_img(
     (character, orientation, color) : Tuple[str | None, str | None, str | None]
         Resulting characteristics of text detection
     """
-    raise NotImplementedError("Function not yet implemented.")
+    char_engine: TextCharacteristics = TextCharacteristics()
+    character: Optional[str]
+    orientation: Optional[str]
+    color: Optional[str]
+    character, orientation, color = None, None, None
+
+    # iteratively rotate the image and run text detection
+    for deg in np.arange(0, 360, degree_step):
+        char_engine.img = rotate_text_img(img, deg)  # rotate the image another step
+
+        ## TODO: rotate the bounds to match the image
+        character, orientation, color = char_engine.get_text_characteristics(bounds, drone_degree)
+
+        if character is not None:  # return if a character was found
+            return character, orientation, color
+
+    return None, None, None  # Character was not found in the rotated images
 
 
 class TextCharacteristics:
