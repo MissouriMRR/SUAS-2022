@@ -58,7 +58,17 @@ def rotate_text_img(img: npt.NDArray[np.uint8], degrees: int) -> npt.NDArray[np.
     rot_img: npt.NDArray[np.uint8]
         the rotated image
     """
-    raise NotImplementedError("Rotate text function not yet implemented")
+    dimensions: Tuple[int, int, int] = np.shape(img)
+    center_pt: Tuple[int, int] = (
+        int(dimensions[0] / 2),
+        int(dimensions[1] / 2),
+    )
+
+    # rotate the image by degrees
+    rot_mat: npt.NDArray[np.uint8] = cv2.getRotationMatrix2D(center_pt, degrees, 1.0)
+    rot_img = cv2.warpAffine(img, rot_mat, img.shape[1::-1], flags=cv2.INTER_LINEAR)
+
+    return rot_img
 
 
 def multi_rot_text_img(
@@ -87,7 +97,7 @@ def multi_rot_text_img(
     (character, orientation, color) : Tuple[str | None, str | None, str | None]
         Resulting characteristics of text detection
     """
-    char_engine: TextCharacteristics = TextCharacteristics()
+    text_engine: TextCharacteristics = TextCharacteristics()
     character: Optional[str]
     orientation: Optional[str]
     color: Optional[str]
@@ -95,10 +105,10 @@ def multi_rot_text_img(
 
     # iteratively rotate the image and run text detection
     for deg in np.arange(0, 360, degree_step):
-        char_engine.img = rotate_text_img(img, deg)  # rotate the image another step
+        text_engine.img = rotate_text_img(img, deg)  # rotate the image another step
 
         ## TODO: rotate the bounds to match the image
-        character, orientation, color = char_engine.get_text_characteristics(bounds, drone_degree)
+        character, orientation, color = text_engine.get_text_characteristics(bounds, drone_degree)
 
         if character is not None:  # return if a character was found
             return character, orientation, color
