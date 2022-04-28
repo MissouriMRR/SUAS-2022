@@ -42,6 +42,54 @@ POSSIBLE_ORIENTATIONS: List[str] = [
 ]
 
 
+def rotate_text_img(img: npt.NDArray[np.uint8], degrees: int) -> npt.NDArray[np.uint8]:
+    """
+    Rotate the image containing the text by a certain degree.
+
+    Parameters
+    ----------
+    img: npt.NDArray[np.uint8]
+        the image to rotate
+    degrees: int
+        by how many degrees to rotate the image
+
+    Returns
+    -------
+    rot_img: npt.NDArray[np.uint8]
+        the rotated image
+    """
+    raise NotImplementedError("Rotate text function not yet implemented")
+
+
+def multi_rot_text_img(
+    img: npt.NDArray[np.uint8], bounds: BoundingBox, drone_degree: float, degree_step: int = 10
+) -> Tuple[Optional[str], Optional[str], Optional[str]]:
+    """
+    Rotates the image and runs text detection until
+    text has been detected or image has been rotated back
+    to original state.
+
+    Parameters
+    ----------
+    img : npt.NDArray[np.uint8]
+        the image containing the ODLC object to detect text on
+    bounds : BoundingBox
+        the bounds of the ODLC object in the image
+    drone_degree : float
+        rotation angle of the drone relative to north
+        this is the yaw degree
+    degree_step : int
+        Default: 10
+        how much to rotate the image by for each iteration (in degrees)
+
+    Returns
+    -------
+    (character, orientation, color) : Tuple[str | None, str | None, str | None]
+        Resulting characteristics of text detection
+    """
+    raise NotImplementedError("Function not yet implemented.")
+
+
 class TextCharacteristics:
     """
     Class for detecting characteristics of text on standard objects.
@@ -191,7 +239,8 @@ class TextCharacteristics:
             output_type=pytesseract.Output.DICT,
             lang="eng",
             config="--psm 10",
-        )
+        )  # NOTE: a config of psm 0 is equivalent to image_to_osd
+        # NOTE: update to only use alphanumeric using -c tessedit_char_whitelist=0123456789
 
         ## Filter detected text to find valid characters ##
         found_characters: List[Tuple[str, BoundingBox]] = []
