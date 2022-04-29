@@ -223,14 +223,41 @@ class BoundingBox:
         angle : int
             the angle to rotate the points by
         center_pt : Tuple[int, int]
-            the point to rotate around
+            the xy point to rotate around
 
         Returns
         -------
         pts : Tuple[Tuple[int, int], Tuple[int, int], Tuple[int, int], Tuple[int, int]]
             the points of the BoundingBox after rotation
         """
-        raise NotImplementedError("rotate_points() is not yet implemented")
+        pts: Tuple[
+            Tuple[int, int], Tuple[int, int], Tuple[int, int], Tuple[int, int]
+        ] = self.vertices  # the rotated points
+        center_x: int = center_pt[0]  # x value of center point
+        center_y: int = center_pt[1]  # y value of center point
+        rad_angle: float = angle * np.pi / 180.0  # convert to radians for calculations
+
+        # for each point
+        for i in np.arange(4):
+            # original xy values
+            x = pts[i][0]
+            y = pts[i][1]
+
+            # calculate rotated point value
+            rot_x: int = int(
+                ((x - center_x) * np.cos(rad_angle))
+                - ((y - center_y) * np.sin(rad_angle))
+                + center_x
+            )
+            rot_y: int = int(
+                ((x - center_x) * np.sin(rad_angle))
+                - ((y - center_y) * np.cos(rad_angle))
+                + center_y
+            )
+            pts[i][0] = rot_x
+            pts[i][1] = rot_y
+
+        return pts
 
 
 if __name__ == "__main__":
