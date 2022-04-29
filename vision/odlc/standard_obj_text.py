@@ -58,6 +58,7 @@ def rotate_text_img(img: npt.NDArray[np.uint8], degrees: int) -> npt.NDArray[np.
     rot_img: npt.NDArray[np.uint8]
         the rotated image
     """
+    # center point of the image to rotate around
     dimensions: Tuple[int, int, int] = np.shape(img)
     center_pt: Tuple[int, int] = (
         int(dimensions[0] / 2),
@@ -103,14 +104,29 @@ def multi_rot_text_img(
     color: Optional[str]
     character, orientation, color = None, None, None
 
+    # center point of the image
+    dimensions: Tuple[int, int, int] = np.shape(img)
+    center_pt: Tuple[int, int] = (
+        int(dimensions[0] / 2),
+        int(dimensions[1] / 2),
+    )
+
     # iteratively rotate the image and run text detection
     for deg in np.arange(0, 360, degree_step):
         text_engine.img = rotate_text_img(img, deg)  # rotate the image another step
 
-        ## TODO: rotate the bounds to match the image
-        character, orientation, color = text_engine.get_text_characteristics(bounds, drone_degree)
+        # rotate the bounding box to match the rotated image
+        rotated_bound_pts: Tuple[
+            Tuple[int, int], Tuple[int, int], Tuple[int, int], Tuple[int, int]
+        ] = bounds.rotate_points(angle=deg, center_pt=center_pt)
+        rotated_bounds: BoundingBox = BoundingBox(rotated_bound_pts, ObjectType.EMG_OBJECT)
 
-        if character is not None:  # return if a character was found
+        # run text detection and characteristics
+        character, orientation, color = text_engine.get_text_characteristics(
+            rotated_bounds, drone_degree
+        )
+
+        if character is not None:  # return if characteristics were found
             return character, orientation, color
 
     return None, None, None  # Character was not found in the rotated images
