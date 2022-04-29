@@ -240,8 +240,8 @@ def conversion(
 
     This is the link to the reference used for the conversion of the parameters into lat,long coordinates
     """
-    o_lat: float = math.radians(coord[0])  # Original lat point converted to radians
-    o_lon: float = math.radians(coord[1])  # Original long point converted to radians
+    o_lat: float = math.radians(coord[1])  # Original lat point converted to radians
+    o_lon: float = math.radians(coord[0])  # Original long point converted to radians
 
     new_lat: float = math.asin(
         math.sin(o_lat) * math.cos(distance / RADIUS)
