@@ -76,9 +76,11 @@ def multi_rot_text_img(
     img: npt.NDArray[np.uint8], bounds: BoundingBox, drone_degree: float, degree_step: int = 10
 ) -> Tuple[Optional[str], Optional[str], Optional[str]]:
     """
-    Rotates the image and runs text detection until
-    text has been detected or image has been rotated back
-    to original state.
+    Rotates the image and runs text detection until text has been detected or
+    image has been rotated back to original state.
+
+    NOTE: Running the function multiple times on the same image increases the amount
+    of time text detection will take, depending on how big/small the degree_step is.
 
     Parameters
     ----------
@@ -90,7 +92,7 @@ def multi_rot_text_img(
         rotation angle of the drone relative to north
         this is the yaw degree
     degree_step : int
-        Default: 10
+        Default: 10 degrees
         how much to rotate the image by for each iteration (in degrees)
 
     Returns

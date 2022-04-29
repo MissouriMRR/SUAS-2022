@@ -227,7 +227,7 @@ class BoundingBox:
 
         Returns
         -------
-        pts : Tuple[Tuple[int, int], Tuple[int, int], Tuple[int, int], Tuple[int, int]]
+        rotated_pts : Tuple[Tuple[int, int], Tuple[int, int], Tuple[int, int], Tuple[int, int]]
             the points of the BoundingBox after rotation
         """
         pts: List[Tuple[int, int]] = list(self.vertices)
