@@ -230,9 +230,7 @@ class BoundingBox:
         pts : Tuple[Tuple[int, int], Tuple[int, int], Tuple[int, int], Tuple[int, int]]
             the points of the BoundingBox after rotation
         """
-        pts: Tuple[
-            Tuple[int, int], Tuple[int, int], Tuple[int, int], Tuple[int, int]
-        ] = self.vertices  # the rotated points
+        pts: List[Tuple[int, int]] = list(self.vertices)
         center_x: int = center_pt[0]  # x value of center point
         center_y: int = center_pt[1]  # y value of center point
         rad_angle: float = angle * np.pi / 180.0  # convert to radians for calculations
@@ -240,8 +238,8 @@ class BoundingBox:
         # for each point
         for i in np.arange(4):
             # original xy values
-            x = pts[i][0]
-            y = pts[i][1]
+            x = self.vertices[i][0]
+            y = self.vertices[i][1]
 
             # calculate rotated point value
             rot_x: int = int(
@@ -254,10 +252,18 @@ class BoundingBox:
                 - ((y - center_y) * np.cos(rad_angle))
                 + center_y
             )
-            pts[i][0] = rot_x
-            pts[i][1] = rot_y
+            pts[i] = (
+                rot_x,
+                rot_y,
+            )
 
-        return pts
+        rotated_pts: Tuple[Tuple[int, int], Tuple[int, int], Tuple[int, int], Tuple[int, int]] = (
+            pts[0],
+            pts[1],
+            pts[2],
+            pts[3],
+        )
+        return rotated_pts
 
 
 if __name__ == "__main__":
