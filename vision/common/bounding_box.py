@@ -212,6 +212,26 @@ class BoundingBox:
 
         return angle
 
+    def rotate_points(
+        self, angle: int, center_pt: Tuple[int, int]
+    ) -> Tuple[Tuple[int, int], Tuple[int, int], Tuple[int, int], Tuple[int, int]]:
+        """
+        Rotates the points of the BoundingBox around a point by a specified angle.
+
+        Parameters
+        ----------
+        angle : int
+            the angle to rotate the points by
+        center_pt : Tuple[int, int]
+            the point to rotate around
+
+        Returns
+        -------
+        pts : Tuple[Tuple[int, int], Tuple[int, int], Tuple[int, int], Tuple[int, int]]
+            the points of the BoundingBox after rotation
+        """
+        raise NotImplementedError("rotate_points() is not yet implemented")
+
 
 if __name__ == "__main__":
     pass
