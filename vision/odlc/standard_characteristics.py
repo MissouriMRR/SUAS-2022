@@ -20,25 +20,24 @@ ODLC_SHAPES: Dict[int, str] = {
     8: "OCTAGON",
 }
 
-
+# trying in BGR
 ODLC_COLORS: Tuple[Tuple[npt.NDArray[np.int64], str], ...] = (
-    (np.array([[180, 18, 255], [0, 0, 231]]), "WHITE"),
-    (np.array([[180, 255, 30], [0, 0, 0]]), "BLACK"),
-    (np.array([[180, 18, 230], [0, 0, 40]]), "GRAY"),
-    (np.array([[180, 255, 255], [159, 50, 70]]), "RED"),
-    (np.array([[9, 255, 255], [0, 50, 70]]), "RED"),
-    (np.array([[128, 255, 255], [90, 50, 70]]), "BLUE"),
-    (np.array([[89, 255, 255], [36, 50, 70]]), "GREEN"),
-    (np.array([[158, 255, 255], [129, 50, 70]]), "PURPLE"),
-    (np.array([[35, 255, 255], [25, 50, 70]]), "YELLOW"),
-    (np.array([[24, 255, 255], [10, 50, 70]]), "ORANGE"),
-    (np.array([[20, 255, 180], [10, 100, 120]]), "BROWN"),
+    (np.array([185, 185, 185]), "WHITE"),
+    (np.array([69, 69, 69]), "BLACK"),
+    (np.array([127, 127, 127]), "GRAY"),
+    (np.array([69, 69, 185]), "RED"),
+    (np.array([185, 69, 69]), "BLUE"),
+    (np.array([69, 185, 69]), "GREEN"),
+    (np.array([198, 57, 127]), "PURPLE"),
+    (np.array([70, 185, 185]), "YELLOW"),
+    (np.array([57, 127, 198]), "ORANGE"),
+    (np.array([42, 76, 110]), "BROWN"),
 )
 
 
 def get_contours(
     img_param: npt.NDArray[np.uint8], edge_detected: bool = False
-) -> Tuple[npt.NDArray[np.intc], ...]:
+) -> Tuple[Tuple[npt.NDArray[np.intc], ...], npt.NDArray[np.intc]]:
     """
     this will use canny edge detection to get all the contours of any shapes in the image and
     return them in a tuple
@@ -66,11 +65,18 @@ def get_contours(
         edges = cv2.Canny(img_param, 100, 100)
 
     cnts: Tuple[npt.NDArray[np.intc]]
-    cnts, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    return cnts
+    cnts, hierarchy = cv2.findContours(edges, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    print(
+        hierarchy,
+        type(hierarchy),
+        type(hierarchy[0]),
+        type(hierarchy[0, 0]),
+        type(hierarchy[0, 0, 0]),
+    )
+    return cnts, hierarchy
 
 
-def pick_out_shape(cnts: Tuple[npt.NDArray[np.intc], ...]) -> npt.NDArray[np.intc]:
+def pick_out_shape(cnts: Tuple[npt.NDArray[np.intc], ...]) -> Tuple[npt.NDArray[np.intc], int]:
     """
     this will go through given tuple of contours and return the contour with the largest area
 
@@ -89,7 +95,7 @@ def pick_out_shape(cnts: Tuple[npt.NDArray[np.intc], ...]) -> npt.NDArray[np.int
         if cv2.contourArea(cnt) > max_area:
             index = i
             max_area = cv2.contourArea(cnt)
-    return cnts[index]
+    return cnts[index], index
 
 
 def get_angle(
@@ -256,37 +262,50 @@ def _check_polygons(approx: npt.NDArray[np.intc]) -> Optional[str]:
 def find_color_in_shape(
     img_param: npt.NDArray[np.uint8],
     shape: npt.NDArray[np.intc],
+    cnts: Tuple[npt.NDArray[np.intc], ...],
+    hierarchy: npt.NDArray[np.intc],
+    shape_index: int,
 ) -> npt.NDArray[np.uint8]:
     """
-    takes the original (still cropped) image and the shape in question and will
-    pick a color off of it and return it as a 1 pixel BGR image
+    function to get the BGR (RGB but backwards bc opencv says so) color of a shape.
+    Quick explanation because i'm proud of it: It makes a mask based off of the contour, then
+    will subtract all areas where there are contours inside of the shape, then take all of the
+    masked pixels and find their average to get the color of the shape
+
+    parameters
+    ----------
+    img_param: npt.NDArray[np.uint8]
+        the original image
+    shape: npt.NDArray[np.intc]
+        original contour of the shape
+    cnts: Tuple[npt.NDArray[np.intc], ...]
+        the originally found list of contours
+    hierarchy: npt.NDArray[np.intc]
+        the hierarchy matrix provided by get_contours()
+    shape_index: int
+        the index of the shape in cnts/hierarchy, provided by pick_out_shape()
     """
-    height: int
-    width: int
-    height, width, _ = img_param.shape
+    mask = np.zeros(img_param.shape[:2], dtype=np.int8)
+    mask = cv2.drawContours(mask, [shape], -1, (255), cv2.FILLED)
 
-    start: int = -1
-    end: int = -1
+    current_index: int = hierarchy[0, shape_index, 2]
+    while True:
+        if cv2.contourArea(cnts[current_index]) / cv2.contourArea(shape) < 0.8:
+            mask = cv2.drawContours(mask, [cnts[current_index]], -1, (0), cv2.FILLED)
+        current_index = hierarchy[0, current_index, 0]
+        if current_index == -1:
+            break
 
-    for x in range(width):
-        point = [x, height // 2]
-        if cv2.pointPolygonTest(shape, point, False) == 0:
-            if start == -1:
-                start = x
-            else:
-                end = x
-                break
+    cv2.imshow("mask", mask)
+    cv2.waitKey(0)
 
-    line: npt.NDArray[np.uint8] = img_param[start:end, height // 2, :]
+    mask = np.where(mask > 0, True, False)
 
-    term_criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 10, 1.0)
-    floaty_line = np.float32(line)
+    shape_partition = np.array([(img_param[mask]).reshape(-1, 3)])
 
-    _2, label, center = cv2.kmeans(
-        floaty_line, 2, bestLabels=None, criteria=term_criteria, attempts=10, flags=0
-    )
-
-    return np.array([np.uint8(center[label[0]])])
+    color = np.array(np.uint8(np.average(shape_partition, 1)))
+    print(color)
+    return color
 
 
 def parse_color(color: npt.NDArray[np.uint8]) -> Optional[str]:
@@ -295,15 +314,13 @@ def parse_color(color: npt.NDArray[np.uint8]) -> Optional[str]:
     color ranges in ODLC_COLORS and will return the matching string in ODLC_COLORS
     or none if no colors match
     """
-    hsv_color: npt.NDArray[np.uint8] = cv2.cvtColor(color, cv2.COLOR_BGR2HSV)
+    dist = 450.0  # bigger then the longest possible distance
+    best_color: Optional[str] = None
     for pair in ODLC_COLORS:
-        if (
-            hsv_color[0, 0, 0] in range(pair[0][1, 0], pair[0][0, 0])
-            and hsv_color[0, 0, 1] in range(pair[0][1, 1], pair[0][0, 1])
-            and hsv_color[0, 0, 2] in range(pair[0][1, 2], pair[0][0, 2])
-        ):
-            return pair[1]
-    return None
+        if np.linalg.norm(color - pair[0]) < dist:
+            dist = float(np.linalg.norm(color - pair[0]))
+            best_color = pair[1]
+    return best_color
 
 
 def id_shape(
@@ -321,7 +338,7 @@ def id_shape(
 
     parameters
     -----------
-    img : npt.NDArray[np.uint8]
+    img_param : npt.NDArray[np.uint8]
         this is the unaltered (except for being cropped to just the shape in question) image
     denoised : npt.NDArray[np.uint8], Optional
         If the image has already been denoised/blurred (Some testing suggested that denoised
@@ -363,13 +380,13 @@ def id_shape(
 
     if cnts is None:
         if edge_detected is None:
-            cnts = get_contours(denoised)
+            cnts, hierarchy = get_contours(denoised)
         else:
-            cnts = get_contours(img_param=edge_detected, edge_detected=True)
-
+            cnts, hierarchy = get_contours(img_param=edge_detected, edge_detected=True)
+    print(cnts)
     bw_denoised: npt.NDArray[np.uint8] = cv2.cvtColor(denoised, cv2.COLOR_BGR2GRAY)
 
-    shape = pick_out_shape(cnts)
+    shape, shape_index = pick_out_shape(cnts)
     peri = cv2.arcLength(shape, True)
     approx = cv2.approxPolyDP(shape, 0.01 * peri, True)
 
@@ -380,18 +397,23 @@ def id_shape(
 
     if shape_name is None:
         shape_name = _check_polygons(approx=approx)
-
+    img_copy = np.copy(img_param)
+    cv2.drawContours(img_copy, [shape], -1, (0, 255, 0), 1)
+    cv2.imshow("test", img_copy)
+    cv2.waitKey(0)
     if shape_name is not None:
         color_name: Optional[str] = None
         if find_color:
-            color_name = parse_color(find_color_in_shape(img_param, shape))
+            color_name = parse_color(
+                find_color_in_shape(img_param, shape, cnts, hierarchy, shape_index)
+            )
         return shape_name, color_name
     raise RuntimeError("Shape failed all checks, make sure it is not a tree or something")
 
 
 if __name__ == "__main__":
     img: npt.NDArray[np.uint8] = cv2.imread(
-        "this will crash if you try to run, put the path to a test img here"
+        "C:/Users/natem/code/multirotor/standard-object-detection-testing/quartercircle.jpg"
     )
     cv2.imshow("img", img)
     cv2.waitKey(0)
