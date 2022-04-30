@@ -6,9 +6,9 @@ from typing import Tuple, List
 
 # ------ GLOBAL VARIABLES ------ #
 # Units: mm
-SENSOR_W: float = 4.8
-SENSOR_H: float = 3.6
-SENSOR_D: float = 6.0
+SENSOR_W: float = 13.2
+SENSOR_H: float = 8.80
+SENSOR_D: float = 15.86
 
 # Units: percent (0.0 -> 1.0)
 OVERLAP: float = 0.1
@@ -19,8 +19,8 @@ RADIUS: float = 20902230.971129
 
 # Bearings for different directions
 SOUTH: float = math.pi
-EAST: float = 1.570796
-NW: float = 5.585054
+EAST: float = math.pi / 2
+NW: float = (7 * math.pi) / 4
 
 # ------ GLOBAL VARIABLES ------ #
 
@@ -28,19 +28,17 @@ NW: float = 5.585054
 def map(
     info: Tuple[Tuple[float, float], float],
     altitude: int = 750,
-    focal_length: float = 4.9,
+    focal_length: float = 9,
 ) -> List[Tuple[float, float]]:
     """
     Calculates the map area, cuts map area into sections,
     then creates flight path for drone through sections.
-
     Parameters
     ----------
     info: Tuple[Tuple[float, float], float]
         The center location in latitude, longitude of the map, and then height of the map
     altitude: int
     focal_length: float
-
     Returns
     -------
     path: List[Tuple[float, float]]
@@ -76,6 +74,7 @@ def map(
 
     # Convert centers to lat, long coordinates
     coord: List[Tuple[float, float]] = coordinates(ft_waypoints, info[0], map_w, map_h)
+    #print(len(set(coord)))
     #print("Coord:", len(coord))
 
     # Flight path algorithm
@@ -88,16 +87,13 @@ def image_area(altitude: int, focal_length: float) -> Tuple[float, float]:
     """
     Takes in the altitude of the drone and the zoom (focal_length) in order to determine
     the area of the image captures by the drone
-
     Parameters
     ----------
     altitude: int
     focal_length: float
-
     Returns
     -------
     (cam_w, cam_h): Tuple[float, float]
-
     Notes
     -----
     fov is the Field of View of the image area
@@ -132,7 +128,6 @@ def find_centers(
     and overlap for image stitching. It will start at the top left corner and move
     a determined distance from from the top left corner to the center of a section
     for every section.
-
     Parameters
     ----------
     map_w: float
@@ -140,7 +135,6 @@ def find_centers(
     cam_w: float
     cam_h: float,
     overlap: float
-
     Returns
     -------
     waypoints: List[Tuple[float, float]]
@@ -184,14 +178,12 @@ def coordinates(
     """
     Finds the coordinate locations of each section of the waypoints converting
     from distance traveled and bearing to lat,long coordinates.
-
     Parameters
     ----------
     waypoints: List[Tuple[float, float]]
     center: Tuple[float, float]
     map_w: float
     map_h: float
-
     Returns
     -------
     coord: List[Tuple[float, float]]
@@ -211,8 +203,8 @@ def coordinates(
     # Convert rest of waypoints using start: lat, long as origin
     for point in waypoints:
         move_x: Tuple[float, float] = conversion(start, EAST, point[0])
-        loc: Tuple[float, float] = conversion(start, SOUTH, point[1])
-        coord.append(loc)
+        move_y: Tuple[float, float] = conversion(start, SOUTH, point[1])
+        coord.append((move_y[0], move_x[1]))
 
     return coord
 
@@ -223,21 +215,17 @@ def conversion(
     """
     Uses the current location, bearing of travel, and the distance traveled in order to determine
     the lat,long coordinates of the new location
-
     Parameters
     ----------
     coord: Tuple[float, float]
     bearing: float
     distance: float
-
     Returns
     -------
     (new_lat: float, new_long: float)
-
     References
     ----------
     https://stackoverflow.com/questions/7222382/get-lat-long-given-current-point-distance-and-bearing
-
     This is the link to the reference used for the conversion of the parameters into lat,long coordinates
     """
     o_lat: float = math.radians(coord[1])  # Original lat point converted to radians
@@ -272,6 +260,8 @@ def flight_path(points: List[Tuple[float, float]], col: int) -> List[Tuple[float
         if i % 2 != 0:
             new_arr[i].reverse()
     
+    #print(new_arr)
+
     path = []
     for row in new_arr:
         path += row
