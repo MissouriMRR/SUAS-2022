@@ -286,6 +286,17 @@ def relax_path(path: List[Point], obstacles: List[Point]) -> List[Point]:
     return path
 
 
+def get_path_length(path):
+    for i, v in enumerate(path):
+        pass
+
+
+def set_altitudes(path, start_alt, goal_alt):
+    path_length = get_path_length(path)
+    
+    pass
+
+
 def solve(
     data_boundary: List[Dict[str, float]],
     data_obstacles: List[Dict[str, float]],
@@ -332,14 +343,16 @@ def solve(
         if G.success:
             path = get_path(G)
             path = relax_path(path, obstacle_shapes)
-            # Debug plot
+            
+            # Plot individual waypoint/obstacle scenarios
             if debug:
                 plotter.plot(
                     obstacles, boundary, G=G, path=path, informed_boundary=informed_boundary
                 )
-            for p in path:
-                some_new_altitude = 0
-                final_route.append((p, some_new_altitude))
+            
+            path_with_altitudes = set_altitudes(path, start[1], goal[1])
+            for p in path_with_altitudes:
+                final_route.append(p)
         else:
             print(f"ERROR: Could not find a path after {MAX_ITERATIONS} iterations")
 
