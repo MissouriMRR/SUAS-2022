@@ -54,9 +54,11 @@ def circles_to_shape(circles: List[Dict[str, float]]) -> List[Point]:
 
 
 def coords_to_points(coords: List[Dict[str, float]]) -> List[Point]:
-    points: List[Point] = []
+    points: List[Tuple[Point, float]] = []
     for coord in coords:
-        points.append(Point(coord["utm_x"], coord["utm_y"]))
+        p = Point(coord["utm_x"], coord["utm_y"])
+        alt = coord["altitude"]
+        points.append((p, alt))
     return points
 
 
@@ -68,10 +70,12 @@ def all_feet_to_meters(obstacles: List[Dict[str, float]]) -> List[Dict[str, floa
     return obstacles
 
 
-def path_to_latlon(path: List[Point], zone_num: int, zone_letter: str) -> List[Tuple[float, float]]:
-    gps_path: List[Tuple[float, float]] = []
-    for point in path:
-        gps_path.append(utm.to_latlon(point.x, point.y, zone_num, zone_letter))
+def path_to_latlon(path: List[Tuple[Point, float]], zone_num: int, zone_letter: str) -> List[Tuple[float, float, float]]:
+    gps_path: List[Tuple[float, float, float]] = []
+    for loc in path:
+        p = utm.to_latlon(loc[0].x, loc[0].y, zone_num, zone_letter)
+        alt = loc[1]
+        gps_path.append((*p, alt))
     return gps_path
 
 

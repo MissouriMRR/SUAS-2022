@@ -10,10 +10,10 @@ from shapely.geometry import Point, Polygon, LineString
 from collections import deque
 
 
-STEP_SIZE: int = 100  # meters
-NEIGHBORHOOD_SIZE: int = 200  # meters
+STEP_SIZE: int = 100  # max distance between vertices in graph (meters)
+NEIGHBORHOOD_SIZE: int = 200  # search radius around current node for optimizing path (meters)
 MAX_ITERATIONS: int = 10000  # max number of iterations before failing to find a path
-INFORMED_ITERATIONS: int = 100  # number of iterations performed in the informed area
+INFORMED_ITERATIONS: int = 100  # max number of iterations performed in the informed area
 
 
 class Graph:
@@ -307,9 +307,9 @@ def solve(
     # Create shapely representations of everything for use in algorithm
     boundary_shape: Polygon = helpers.coords_to_shape(boundary)
     obstacle_shapes: List[Point] = helpers.circles_to_shape(obstacles)
-    waypoints_points: List[Point] = helpers.coords_to_points(waypoints)
+    waypoints_points: List[Tuple[Point, float]] = helpers.coords_to_points(waypoints)
 
-    final_route: List[Tuple[float, float]] = []
+    final_route: List[Tuple[float, float, float]] = []
 
     start_time_final_route = time.time()
 
@@ -318,7 +318,7 @@ def solve(
         start = waypoints_points[i]
         goal = waypoints_points[i + 1]
 
-        if not intersects_obstacle(LineString([start, goal]), obstacle_shapes):
+        if not intersects_obstacle(LineString([start[0], goal[0]]), obstacle_shapes):
             print(f"Found direct path between waypoints {i} and {i+1}")
             final_route.append(start)
             final_route.append(goal)
@@ -326,7 +326,7 @@ def solve(
 
         print(f"Finding path between waypoints {i} and {i+1}")
         start_time = time.time()
-        G, informed_boundary = rrt_star(start, goal, boundary_shape, obstacle_shapes)
+        G, informed_boundary = rrt_star(start[0], goal[0], boundary_shape, obstacle_shapes)
         print(f"Solved in {(time.time()-start_time):.3f}s")
 
         if G.success:
@@ -338,7 +338,8 @@ def solve(
                     obstacles, boundary, G=G, path=path, informed_boundary=informed_boundary
                 )
             for p in path:
-                final_route.append(p)
+                some_new_altitude = 0
+                final_route.append((p, some_new_altitude))
         else:
             print(f"ERROR: Could not find a path after {MAX_ITERATIONS} iterations")
 
@@ -348,7 +349,7 @@ def solve(
         plotter.plot(obstacles, boundary, path=final_route)
 
     # last step converting back to lat lon
-    final_route_latlon: List[Tuple[float, float]] = helpers.path_to_latlon(
+    final_route_latlon: List[Tuple[float, float, float]] = helpers.path_to_latlon(
         final_route, zone_num, zone_letter
     )
 
@@ -398,6 +399,6 @@ if __name__ == "__main__":
         {"latitude": 38.146003, "longitude": -76.430733, "radius": 225.0, "height": 500.0},
     ]
 
-    route = solve(data_boundary, data_obstacles, data_waypoints, show_plot=True, debug=False)
+    route = solve(data_boundary, data_obstacles, data_waypoints, show_plot=True)
 
     print(route)

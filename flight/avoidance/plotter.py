@@ -34,8 +34,8 @@ def plot(obstacles, boundary, G=None, path=None, ellr=None, informed_boundary=No
 
     # plot path
     if path is not None:
-        path_x = [p.x for p in path]
-        path_y = [p.y for p in path]
+        path_x = [p[0].x for p in path]
+        path_y = [p[0].y for p in path]
         plt.plot(path_x, path_y, "bo-")
 
     # plot informed boundary
