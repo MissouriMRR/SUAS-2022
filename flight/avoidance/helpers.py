@@ -1,3 +1,5 @@
+"""Helper functions for converting and handling data"""
+
 from typing import List, Tuple, Dict
 import utm
 from shapely.geometry import Point, Polygon
@@ -39,7 +41,7 @@ def all_latlon_to_utm(list_of_coords: List[Dict[str, float]]) -> List[Dict[str, 
         An updated list of dictionaries with added utm data
     """
 
-    for i in range(len(list_of_coords)):
+    for i, _ in enumerate(list_of_coords):
         list_of_coords[i] = latlon_to_utm(list_of_coords[i])
     return list_of_coords
 
@@ -103,9 +105,9 @@ def coords_to_points(coords: List[Dict[str, float]]) -> List[Tuple[Point, float]
 
     points: List[Tuple[Point, float]] = []
     for coord in coords:
-        p = Point(coord["utm_x"], coord["utm_y"])
+        point = Point(coord["utm_x"], coord["utm_y"])
         alt = coord["altitude"]
-        points.append((p, alt))
+        points.append((point, alt))
     return points
 
 
@@ -128,11 +130,11 @@ def all_feet_to_meters(
         An updated list in the original format with units of meters instead of feet
     """
 
-    FEET_TO_METERS_MULTIPLIER = 0.3048
+    feet_to_meters_multiplier: float = 0.3048
     for obstacle in obstacles:
         # conversion
-        obstacle["radius"] *= FEET_TO_METERS_MULTIPLIER
-        obstacle["height"] *= FEET_TO_METERS_MULTIPLIER
+        obstacle["radius"] *= feet_to_meters_multiplier
+        obstacle["height"] *= feet_to_meters_multiplier
         # buffer
         obstacle["radius"] += obstacle_buffer
         obstacle["height"] += obstacle_buffer
@@ -161,9 +163,9 @@ def path_to_latlon(
 
     gps_path: List[Tuple[float, float, float]] = []
     for loc in path:
-        p = utm.to_latlon(loc[0].x, loc[0].y, zone_num, zone_letter)
-        alt = loc[1]
-        gps_path.append((*p, alt))
+        point: Tuple[float, float] = utm.to_latlon(loc[0].x, loc[0].y, zone_num, zone_letter)
+        alt: float = loc[1]
+        gps_path.append((*point, alt))
     return gps_path
 
 
@@ -181,4 +183,4 @@ def get_zone_info(boundary: List[Dict[str, float]]) -> Tuple[int, str]:
         The utm zone number and letter
     """
 
-    return boundary[0]["utm_zone_number"], boundary[0]["utm_zone_letter"]
+    return (int(boundary[0]["utm_zone_number"]), str(boundary[0]["utm_zone_letter"]))
