@@ -10,6 +10,8 @@ from shapely.geometry import Point, Polygon, LineString
 from collections import deque
 
 
+OBSTACLE_BUFFER: int = 5  # buffer obstacles for gps inacuracies (meters)
+
 STEP_SIZE: int = 100  # max distance between vertices in graph (meters)
 NEIGHBORHOOD_SIZE: int = 200  # search radius around current node for optimizing path (meters)
 MAX_ITERATIONS: int = 10000  # max number of iterations before failing to find a path
@@ -286,15 +288,31 @@ def relax_path(path: List[Point], obstacles: List[Point]) -> List[Point]:
     return path
 
 
-def get_path_length(path):
-    for i, v in enumerate(path):
-        pass
+def get_path_length(path: List[Point]) -> float:
+    length: float = 0
+    for i in range(len(path) - 1):
+        length += path[i].distance(path[i + 1])
+    return length
 
 
-def set_altitudes(path, start_alt, goal_alt):
-    path_length = get_path_length(path)
-    
-    pass
+def set_altitudes(
+    path: List[Point], start_alt: float, goal_alt: float
+) -> List[Tuple[Point, float]]:
+    altitude_change = goal_alt - start_alt
+    total_length: float = get_path_length(path)
+    current_length: float = 0
+    path_with_altitudes: List[Tuple[Point, float]] = []
+
+    path_with_altitudes.append((path[0], start_alt))
+
+    for i in range(1, len(path)):
+        point = path[i]
+        current_length += path[i].distance(path[i - 1])
+        fraction_of_alt_change = current_length / total_length
+        altitude = start_alt + (altitude_change * fraction_of_alt_change)
+        path_with_altitudes.append((point, altitude))
+
+    return path_with_altitudes
 
 
 def solve(
@@ -313,14 +331,14 @@ def solve(
     zone_num, zone_letter = helpers.get_zone_info(boundary)
 
     # Convert obstacle height and radius from feet to meters
-    obstacles = helpers.all_feet_to_meters(obstacles)
+    obstacles = helpers.all_feet_to_meters(obstacles, OBSTACLE_BUFFER)
 
     # Create shapely representations of everything for use in algorithm
     boundary_shape: Polygon = helpers.coords_to_shape(boundary)
     obstacle_shapes: List[Point] = helpers.circles_to_shape(obstacles)
     waypoints_points: List[Tuple[Point, float]] = helpers.coords_to_points(waypoints)
 
-    final_route: List[Tuple[float, float, float]] = []
+    final_route: List[Tuple[Point, float]] = []
 
     start_time_final_route = time.time()
 
@@ -341,22 +359,31 @@ def solve(
         print(f"Solved in {(time.time()-start_time):.3f}s")
 
         if G.success:
-            path = get_path(G)
-            path = relax_path(path, obstacle_shapes)
-            
+            path: List[Point] = get_path(G)
+            path: List[Point] = relax_path(path, obstacle_shapes)
+
             # Plot individual waypoint/obstacle scenarios
             if debug:
                 plotter.plot(
                     obstacles, boundary, G=G, path=path, informed_boundary=informed_boundary
                 )
-            
+
             path_with_altitudes = set_altitudes(path, start[1], goal[1])
-            for p in path_with_altitudes:
-                final_route.append(p)
+            for i in range(len(path_with_altitudes) - 1):
+                final_route.append(path_with_altitudes[i])
         else:
             print(f"ERROR: Could not find a path after {MAX_ITERATIONS} iterations")
 
     print(f"Total runtime: {(time.time()-start_time_final_route):.3f}s")
+
+    # remove waypoint overlap
+    final_route = [
+        final_route[i]
+        for i in range(len(final_route))
+        if (i == 0) or final_route[i] != final_route[i - 1]
+    ]
+
+    print(f"{len(final_route)} waypoints")
 
     if show_plot:
         plotter.plot(obstacles, boundary, path=final_route)

@@ -62,15 +62,20 @@ def coords_to_points(coords: List[Dict[str, float]]) -> List[Point]:
     return points
 
 
-def all_feet_to_meters(obstacles: List[Dict[str, float]]) -> List[Dict[str, float]]:
+def all_feet_to_meters(
+    obstacles: List[Dict[str, float]], obstacle_buffer: int
+) -> List[Dict[str, float]]:
     FEET_TO_METERS_MULTIPLIER = 0.3048
     for obstacle in obstacles:
         obstacle["radius"] *= FEET_TO_METERS_MULTIPLIER
         obstacle["height"] *= FEET_TO_METERS_MULTIPLIER
+        obstacle["radius"] += obstacle_buffer
     return obstacles
 
 
-def path_to_latlon(path: List[Tuple[Point, float]], zone_num: int, zone_letter: str) -> List[Tuple[float, float, float]]:
+def path_to_latlon(
+    path: List[Tuple[Point, float]], zone_num: int, zone_letter: str
+) -> List[Tuple[float, float, float]]:
     gps_path: List[Tuple[float, float, float]] = []
     for loc in path:
         p = utm.to_latlon(loc[0].x, loc[0].y, zone_num, zone_letter)

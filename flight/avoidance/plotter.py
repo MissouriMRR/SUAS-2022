@@ -36,7 +36,15 @@ def plot(obstacles, boundary, G=None, path=None, ellr=None, informed_boundary=No
     if path is not None:
         path_x = [p[0].x for p in path]
         path_y = [p[0].y for p in path]
+        path_alts = [p[1] for p in path]
+        # plot all waypoints
         plt.plot(path_x, path_y, "bo-")
+        # plot start and end points
+        plt.plot(path[0][0].x, path[0][0].y, c="red", marker="*")
+        plt.plot(path[len(path) - 1][0].x, path[len(path) - 1][0].y, c="red", marker="*")
+        # plot altitude labels beside each waypoint
+        for i in range(len(path)):
+            plt.text(path[i][0].x, path[i][0].y, str(round(path[i][1])))
 
     # plot informed boundary
     if informed_boundary is not None:
