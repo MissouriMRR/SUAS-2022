@@ -1,12 +1,34 @@
+"""Provides plotting functionality for visaulizing waypoint, obstacle, and boundary data"""
+
 import matplotlib.pyplot as plt
-from matplotlib import collections as mc
-from typing import List, Tuple
+from typing import List, Dict, Tuple, Optional
+from shapely.geometry import Polygon, Point
+from path_finder import Graph
 
 
-Point = Tuple[float, float]
+def plot(
+    obstacles: List[Dict[str, float]],
+    boundary: List[Dict[str, float]],
+    G: Optional[Graph] = None,
+    path: Optional[List[Point]] = None,
+    informed_boundary: Optional[Polygon] = None,
+) -> None:
+    """Plots boundary, obstacle, and path data
 
+    Parameters
+    ----------
+    obstacles : List[Dict[str, float]]
+        A list of obstacles in dictionary format
+    boundary : List[Dict[str, float]]
+        A list of points representing a boundary in dictionary format
+    G : Optional[Graph], optional
+        A graph of all nodes and vertices used during path finding, by default None
+    path : Optional[List[Point]], optional
+        A list of nodes that form a path, by default None
+    informed_boundary : Optional[Polygon], optional
+        The informed area used during path finding, by default None
+    """
 
-def plot(obstacles, boundary, G=None, path=None, ellr=None, informed_boundary=None) -> None:
     # plot obstacles
     for obstacle in obstacles:
         x = obstacle["utm_x"]

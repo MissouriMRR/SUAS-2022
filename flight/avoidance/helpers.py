@@ -3,16 +3,20 @@ import utm
 from shapely.geometry import Point, Polygon
 
 
-def latlon_to_utm(coords: dict) -> dict:
-    """
-    Converts latlon coordinates to utm coordinates and adds the data to the dictionary
+def latlon_to_utm(coords: Dict[str, float]) -> Dict[str, float]:
+    """Converts latlon coordinates to utm coordinates and adds the data to the dictionary
 
-    Args:
-        coords (dict): A dictionary containing lat long coordinates
+    Parameters
+    ----------
+    coords : Dict[str, float]
+        A dictionary containing lat long coordinates
 
-    Returns:
-        dict: An updated dictionary with additional keys and values with utm data
+    Returns
+    -------
+    Dict[str, float]
+        An updated dictionary with additional keys and values with utm data
     """
+
     utm_coords = utm.from_latlon(coords["latitude"], coords["longitude"])
     coords["utm_x"] = utm_coords[0]
     coords["utm_y"] = utm_coords[1]
@@ -21,28 +25,58 @@ def latlon_to_utm(coords: dict) -> dict:
     return coords
 
 
-def all_latlon_to_utm(list_of_coords: list[dict]) -> list[dict]:
-    """
-    Converts a list of dictionarys with latlon data to add utm data
+def all_latlon_to_utm(list_of_coords: List[Dict[str, float]]) -> List[Dict[str, float]]:
+    """Converts a list of dictionarys with latlon data to add utm data
 
-    Args:
-        list_of_coords (list[dict]): A list of dictionaries that contain lat long data
+    Parameters
+    ----------
+    list_of_coords : List[Dict[str, float]]
+        A list of dictionaries that contain lat long data
 
-    Returns:
-        list[dict]: An updated list of dictionaries with added utm data
+    Returns
+    -------
+    List[Dict[str, float]]
+        An updated list of dictionaries with added utm data
     """
+
     for i in range(len(list_of_coords)):
         list_of_coords[i] = latlon_to_utm(list_of_coords[i])
     return list_of_coords
 
 
 def coords_to_shape(coords: List[Dict[str, float]]) -> Polygon:
+    """Converts a list of dictionary location data to a shapely polygon
+
+    Parameters
+    ----------
+    coords : List[Dict[str, float]]
+        A list of dictionaries that contain utm data
+
+    Returns
+    -------
+    Polygon
+        A shapely polygon from the given utm data
+    """
+
     poly_coords = [(point["utm_x"], point["utm_y"]) for point in coords]
     shape = Polygon(poly_coords)
     return shape
 
 
 def circles_to_shape(circles: List[Dict[str, float]]) -> List[Point]:
+    """Converts a list of circles to shapely shapes
+
+    Parameters
+    ----------
+    circles : List[Dict[str, float]]
+        A list of dictionaries that contain central utm coordinates and a radius
+
+    Returns
+    -------
+    List[Point]
+        A point, enlarged to the given radius
+    """
+
     circle_shapes: List[Point] = []
     for circle in circles:
         x = circle["utm_x"]
@@ -53,7 +87,20 @@ def circles_to_shape(circles: List[Dict[str, float]]) -> List[Point]:
     return circle_shapes
 
 
-def coords_to_points(coords: List[Dict[str, float]]) -> List[Point]:
+def coords_to_points(coords: List[Dict[str, float]]) -> List[Tuple[Point, float]]:
+    """Converts a list of utm coordinates to a list of shapely points
+
+    Parameters
+    ----------
+    coords : List[Dict[str, float]]
+        A list of coordinates with utm position and altitude data
+
+    Returns
+    -------
+    List[Tuple[Point, float]]
+        A list of points with altitudes
+    """
+
     points: List[Tuple[Point, float]] = []
     for coord in coords:
         p = Point(coord["utm_x"], coord["utm_y"])
@@ -65,17 +112,53 @@ def coords_to_points(coords: List[Dict[str, float]]) -> List[Point]:
 def all_feet_to_meters(
     obstacles: List[Dict[str, float]], obstacle_buffer: int
 ) -> List[Dict[str, float]]:
+    """Converts obstacle radius and height to meters, then adds
+    a buffer to radius and height
+
+    Parameters
+    ----------
+    obstacles : List[Dict[str, float]]
+        A list of obstacles in dictionary format
+    obstacle_buffer : int
+        A buffer amount in meters
+
+    Returns
+    -------
+    List[Dict[str, float]]
+        An updated list in the original format with units of meters instead of feet
+    """
+
     FEET_TO_METERS_MULTIPLIER = 0.3048
     for obstacle in obstacles:
+        # conversion
         obstacle["radius"] *= FEET_TO_METERS_MULTIPLIER
         obstacle["height"] *= FEET_TO_METERS_MULTIPLIER
+        # buffer
         obstacle["radius"] += obstacle_buffer
+        obstacle["height"] += obstacle_buffer
     return obstacles
 
 
 def path_to_latlon(
     path: List[Tuple[Point, float]], zone_num: int, zone_letter: str
 ) -> List[Tuple[float, float, float]]:
+    """_summary_
+
+    Parameters
+    ----------
+    path : List[Tuple[Point, float]]
+        _description_
+    zone_num : int
+        _description_
+    zone_letter : str
+        _description_
+
+    Returns
+    -------
+    List[Tuple[float, float, float]]
+        _description_
+    """
+
     gps_path: List[Tuple[float, float, float]] = []
     for loc in path:
         p = utm.to_latlon(loc[0].x, loc[0].y, zone_num, zone_letter)
@@ -84,5 +167,18 @@ def path_to_latlon(
     return gps_path
 
 
-def get_zone_info(boundary: Polygon) -> Tuple[int, str]:
+def get_zone_info(boundary: List[Dict[str, float]]) -> Tuple[int, str]:
+    """Gets the utm zone number and letter based off the first point in the boundary
+
+    Parameters
+    ----------
+    boundary : List[Dict[str, float]]
+        Boundary data in dictionary format
+
+    Returns
+    -------
+    Tuple[int, str]
+        The utm zone number and letter
+    """
+
     return boundary[0]["utm_zone_number"], boundary[0]["utm_zone_letter"]

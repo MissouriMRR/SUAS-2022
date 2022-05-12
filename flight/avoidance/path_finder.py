@@ -1,3 +1,5 @@
+"""Provides path finding functionality using the Informed RRT* algorithm"""
+
 import math
 import random
 import numpy as np
@@ -5,13 +7,13 @@ import shapely
 import helpers
 import time
 import plotter
-from typing import List, Tuple, Dict, Union, final
+from typing import List, Dict, Tuple, Union
 from shapely.geometry import Point, Polygon, LineString
 from collections import deque
 
 
+# Global constants
 OBSTACLE_BUFFER: int = 5  # buffer obstacles for gps inacuracies (meters)
-
 STEP_SIZE: int = 100  # max distance between vertices in graph (meters)
 NEIGHBORHOOD_SIZE: int = 200  # search radius around current node for optimizing path (meters)
 MAX_ITERATIONS: int = 10000  # max number of iterations before failing to find a path
@@ -19,6 +21,8 @@ INFORMED_ITERATIONS: int = 100  # max number of iterations performed in the info
 
 
 class Graph:
+    """A class used to store vertices and edges that make up a graph"""
+
     def __init__(self, q_start: Point, q_goal: Point):
         self.q_start = q_start
         self.q_goal = q_goal
@@ -32,6 +36,19 @@ class Graph:
         self.distances = {0: 0.0}
 
     def add_vertex(self, q: Point) -> int:
+        """Adds a vertex to the graph
+
+        Parameters
+        ----------
+        q : Point
+            A shapley point
+
+        Returns
+        -------
+        int
+            index of the new vertex in the graph
+        """
+
         try:
             index: int = self.vertex_to_index[q]
         except:
@@ -42,15 +59,55 @@ class Graph:
         return index
 
     def add_edge(self, index1: int, index2: int, cost: float) -> None:
+        """Adds an edge to the graph between two vertices by their index
+
+        Parameters
+        ----------
+        index1 : int
+            Index of vertex 1
+        index2 : int
+            Index of vertex 2
+        cost : float
+            Length of the edge
+        """
+
         self.edges.append((index1, index2))
         self.neighbors[index1].append((index2, cost))
         self.neighbors[index2].append((index1, cost))
 
     def random_position(self, boundary: Polygon) -> Point:
+        """Finds a random point within the boundary
+
+        Parameters
+        ----------
+        boundary : Polygon
+            A closed, bounding shapely polygon
+
+        Returns
+        -------
+        Point
+            A shapely point at a random location inside the boundary
+        """
+
         return get_random_point_in_polygon(boundary)
 
 
 def intersects_obstacle(shape: Union[Polygon, LineString], obstacles: List[Polygon]) -> bool:
+    """Tests whether a shape intersects an obstacle
+
+    Parameters
+    ----------
+    shape : Union[Polygon, LineString]
+        A shapely polygon or line
+    obstacles : List[Polygon]
+        A list of all the obstacles as shapely shapes
+
+    Returns
+    -------
+    bool
+        Whether or not an intersection was detected
+    """
+
     for obstacle in obstacles:
         if shape.intersection(obstacle):
             return True
@@ -58,6 +115,23 @@ def intersects_obstacle(shape: Union[Polygon, LineString], obstacles: List[Polyg
 
 
 def nearest(G: Graph, q_rand: Point, obstacles: List[Polygon]) -> Tuple[Point, int]:
+    """Finds the nearest vertex in the graph to the given point
+
+    Parameters
+    ----------
+    G : Graph
+        A graph with at least one vertex
+    q_rand : Point
+        A shapely point at a random location
+    obstacles : List[Polygon]
+        A list of all the obstacles as shapely shapes
+
+    Returns
+    -------
+    Tuple[Point, int]
+        The nearest vertex in the graph to q_rand, along with its index
+    """
+
     q_near: Point = None
     q_near_index: int = None
     min_dist: float = float("inf")
@@ -79,7 +153,23 @@ def nearest(G: Graph, q_rand: Point, obstacles: List[Polygon]) -> Tuple[Point, i
     return q_near, q_near_index
 
 
-def new_vertex(q_rand: Point, q_near: Point, STEP_SIZE: int) -> Point:
+def new_vertex(q_rand: Point, q_near: Point) -> Point:
+    """Finds a new vertex to be added to the graph. This vertex is at most
+    a distance of STEP_SIZE away from q_near and in the direction of q_rand
+
+    Parameters
+    ----------
+    q_rand : Point
+        A random shapely point located inside a bounding area
+    q_near : Point
+        The nearest vertex on the graph to q_rand
+
+    Returns
+    -------
+    Point
+        A new shapely point to be added to the graph
+    """
+
     dirn = np.array(q_rand) - np.array(q_near)
     length = np.linalg.norm(dirn)
     dirn = (dirn / length) * min(STEP_SIZE, length)
@@ -89,12 +179,41 @@ def new_vertex(q_rand: Point, q_near: Point, STEP_SIZE: int) -> Point:
 
 
 def in_boundary(boundary: Polygon, vertex: Point) -> bool:
+    """Tests if a point lies within a boundary
+
+    Parameters
+    ----------
+    boundary : Polygon
+        A boundary represented as a shapely polygon
+    vertex : Point
+        A vertex represented as a shapely point
+
+    Returns
+    -------
+    bool
+        Whether or not the point lies inside the boundary
+    """
+
     if boundary.contains(vertex):
         return True
     return False
 
 
 def get_random_point_in_polygon(polygon: Polygon) -> Point:
+    """Gets a random point inside an oddly shaped polygon by finding the minimum bounding rectangle
+    and generating random x,y coordinates until a pair is generated that lies within the original polygon
+
+    Parameters
+    ----------
+    polygon : Polygon
+        The desired area for a randomly generated point to lie in
+
+    Returns
+    -------
+    Point
+        A random point guranteed to be inside the polygon
+    """
+
     minx, miny, maxx, maxy = polygon.bounds
     while True:
         p = Point(random.uniform(minx, maxx), random.uniform(miny, maxy))
@@ -103,19 +222,39 @@ def get_random_point_in_polygon(polygon: Polygon) -> Point:
 
 
 def rrt_star(
-    q_start: Point,
-    q_goal: Point,
-    boundary: Polygon,
-    obstacles: List[Point],
-    informed_boundary_set=False,
+    q_start: Point, q_goal: Point, boundary: Polygon, obstacles: List[Point]
 ) -> Tuple[Graph, Polygon]:
+    """An implementation of the informed RRT* algorithm. https://ieeexplore.ieee.org/document/6942976
+    This algorithm generates random points in a contained area to rapidly build out a graph of nodes and edges
+    that can be used to find an unobstructed path between a start and a goal point.
+
+    Parameters
+    ----------
+    q_start : Point
+        Starting point
+    q_goal : Point
+        Goal point
+    boundary : Polygon
+        A bounding area to restrict the path finding to
+    obstacles : List[Point]
+        A list of obstacles to avoid
+
+    Returns
+    -------
+    Tuple[Graph, Polygon]
+        A graph of connected vertices that include a path to the goal point
+        A polygon representing the informed search area
+    """
+
     G: Graph = Graph(q_start, q_goal)
 
-    ellr = None
-    informed_boundary = None
+    ellr: Polygon = None
+    informed_boundary: Polygon = None
+    informed_boundary_set = False
 
-    counter = 0
+    counter: int = 0
 
+    # begin looping for a maximum number of iterations
     for i in range(MAX_ITERATIONS):
         if informed_boundary_set:
             counter += 1
@@ -124,23 +263,25 @@ def rrt_star(
             print(f"Iterated for {counter} additional times")
             break
 
+        # generate a random point and test for collisions
         q_rand = G.random_position(boundary)
         if intersects_obstacle(q_rand, obstacles):
             continue
 
+        # find nearest point in graph
         q_near, q_near_index = nearest(G, q_rand, obstacles)
         if q_near is None:
             continue
 
-        q_new = new_vertex(q_rand, q_near, STEP_SIZE)
+        # generate a new vertex to be connected to q_near in the direction of q_rand
+        q_new = new_vertex(q_rand, q_near)
 
         q_new_index = G.add_vertex(q_new)
         dist = q_new.distance(q_near)
         G.add_edge(q_new_index, q_near_index, dist)
         G.distances[q_new_index] = G.distances[q_near_index] + dist
 
-        # update nearby vertices distance if q_new can help
-        # make a shorter path
+        # update nearby vertices distance if q_new can help make a shorter path
         for vex in G.vertices:
             if vex == q_new:
                 continue
@@ -158,6 +299,7 @@ def rrt_star(
                 G.add_edge(idx, q_new_index, dist)
                 G.distances[idx] = G.distances[q_new_index] + dist
 
+        # test if we are close enough to the goal and can connect a path
         dist = q_new.distance(G.q_goal)
         if dist <= STEP_SIZE:
             endidx = G.add_vertex(G.q_goal)
@@ -167,8 +309,11 @@ def rrt_star(
             except:
                 G.distances[endidx] = G.distances[q_new_index] + dist
 
+            # the first time a path from start to goal has been found
             G.success = True
 
+            # create an informed search area, update the boundary to this area,
+            # and keep generating more nodes in an attempt to improve path
             if not informed_boundary_set:
                 print(f"SUCCESS: Found a path after iterating {i} times")
 
@@ -185,6 +330,24 @@ def rrt_star(
 
 
 def informed_area(q_start: Point, q_goal: Point, path: List[Point]) -> Polygon:
+    """Generates an oval shaped informed area of fixed proportions, scaled to fully enclose
+    the path between the start and end points
+
+    Parameters
+    ----------
+    q_start : Point
+        Start point
+    q_goal : Point
+        Goal point
+    path : List[Point]
+        A path between the start and goal points
+
+    Returns
+    -------
+    Polygon
+        An oval shaped informed area that fully encloses the path
+    """
+
     expansion: int = 0  # initial expansion amount
     expansion_rate: int = 10  # meters
     buffer: int = 0  # meters
@@ -235,6 +398,19 @@ def informed_area(q_start: Point, q_goal: Point, path: List[Point]) -> Polygon:
 
 
 def get_path(G: Graph) -> List[Point]:
+    """Uses Dijkstra's algorithm to find the shortest path between nodes in a graph
+
+    Parameters
+    ----------
+    G : Graph
+        A graph with nodes and edges
+
+    Returns
+    -------
+    List[Point]
+        The shortest path between the start and goal nodes
+    """
+
     src_index = G.vertex_to_index[(G.q_start.x, G.q_start.y)]
     dst_index = G.vertex_to_index[(G.q_goal.x, G.q_goal.y)]
 
@@ -267,10 +443,27 @@ def get_path(G: Graph) -> List[Point]:
 
 
 def relax_path(path: List[Point], obstacles: List[Point]) -> List[Point]:
+    """Removes as many nodes from a path without causing a collision,
+    leading to a straighter path with fewer nodes
+
+    Parameters
+    ----------
+    path : List[Point]
+        A list of nodes
+    obstacles : List[Point]
+        A list of obstacles represented by shapely shapes
+
+    Returns
+    -------
+    List[Point]
+        An updated path with a reduced number of nodes
+    """
+
     if len(path) < 3:
         return path
 
-    # check forwards
+    # reduce nodes by moving forwards on the first iteration,
+    # then reverse the path and reduce nodes from the other direction
     for j in range(2):
         i = 0
         while True:
@@ -289,6 +482,19 @@ def relax_path(path: List[Point], obstacles: List[Point]) -> List[Point]:
 
 
 def get_path_length(path: List[Point]) -> float:
+    """Gets the total length of a path
+
+    Parameters
+    ----------
+    path : List[Point]
+        A list of nodes
+
+    Returns
+    -------
+    float
+        Total length of the path
+    """
+
     length: float = 0
     for i in range(len(path) - 1):
         length += path[i].distance(path[i + 1])
@@ -298,6 +504,24 @@ def get_path_length(path: List[Point]) -> float:
 def set_altitudes(
     path: List[Point], start_alt: float, goal_alt: float
 ) -> List[Tuple[Point, float]]:
+    """Sets altitudes for every point in a path by calculating the total length of a path
+    and assigning a percentage of the altitude difference based on the distance each point is along the path
+
+    Parameters
+    ----------
+    path : List[Point]
+        A list of nodes
+    start_alt : float
+        Altitude at the start node
+    goal_alt : float
+        Altitude at the goal node
+
+    Returns
+    -------
+    List[Tuple[Point, float]]
+        An updated path where each node is paired with an altitude
+    """
+
     altitude_change = goal_alt - start_alt
     total_length: float = get_path_length(path)
     current_length: float = 0
@@ -320,8 +544,30 @@ def solve(
     data_obstacles: List[Dict[str, float]],
     data_waypoints: List[Dict[str, float]],
     show_plot: bool = False,
-    debug: bool = False,
+    debug_plot: bool = False,
 ):
+    """Calls the informed RRT* algorithm multiple times to solve a path
+    between each pair of waypoints in the provided list
+
+    Parameters
+    ----------
+    data_boundary : List[Dict[str, float]]
+        Boundary data in original json format
+    data_obstacles : List[Dict[str, float]]
+        Obstacle data in original json format
+    data_waypoints : List[Dict[str, float]]
+        Waypoint data in original json format
+    show_plot : bool, optional
+        Shows a plot of the complete solution to all the waypoints, by default False
+    debug_plot : bool, optional
+        Shows a plot of the solution between each pair of waypoints, by default False
+
+    Returns
+    -------
+    List[Tuple[float, float, float]]
+        The solved path as a list of tuples in the format of (lat, long, altitude)
+    """
+
     # Add utm coordinates to all
     boundary: List[Dict[str, float]] = helpers.all_latlon_to_utm(data_boundary)
     obstacles: List[Dict[str, float]] = helpers.all_latlon_to_utm(data_obstacles)
@@ -363,7 +609,7 @@ def solve(
             path: List[Point] = relax_path(path, obstacle_shapes)
 
             # Plot individual waypoint/obstacle scenarios
-            if debug:
+            if debug_plot:
                 plotter.plot(
                     obstacles, boundary, G=G, path=path, informed_boundary=informed_boundary
                 )
