@@ -20,7 +20,16 @@ ODLC_SHAPES: Dict[int, str] = {
     8: "OCTAGON",
 }
 
-# trying in BGR
+# in BGR 
+# values for colors were obtained by finding the RGB (BGR)
+# color for the color that is widely accepted (ie 0, 0, 0 for black)
+# then with gray in the middle I have a sphere that i move all of the color
+# points onto (still in the same vector direction away from gray, but now all
+# the same distance from gray)
+# https://www.desmos.com/calculator/zokjuf8rm9
+# link to the desmos page where I did some formulas
+# can put in a color and get out the new color that is a set distance from gray
+# but still in the same direction as the original
 ODLC_COLORS: Tuple[Tuple[npt.NDArray[np.int64], str], ...] = (
     (np.array([185, 185, 185]), "WHITE"),
     (np.array([69, 69, 69]), "BLACK"),
@@ -30,7 +39,7 @@ ODLC_COLORS: Tuple[Tuple[npt.NDArray[np.int64], str], ...] = (
     (np.array([69, 185, 69]), "GREEN"),
     (np.array([198, 57, 127]), "PURPLE"),
     (np.array([70, 185, 185]), "YELLOW"),
-    (np.array([57, 127, 198]), "ORANGE"),
+    (np.array([58, 148, 196]), "ORANGE"),
     (np.array([42, 76, 110]), "BROWN"),
 )
 
@@ -66,13 +75,13 @@ def get_contours(
 
     cnts: Tuple[npt.NDArray[np.intc]]
     cnts, hierarchy = cv2.findContours(edges, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-    print(
-        hierarchy,
-        type(hierarchy),
-        type(hierarchy[0]),
-        type(hierarchy[0, 0]),
-        type(hierarchy[0, 0, 0]),
-    )
+    # print(
+    #     hierarchy,
+    #     type(hierarchy),
+    #     type(hierarchy[0]),
+    #     type(hierarchy[0, 0]),
+    #     type(hierarchy[0, 0, 0]),
+    # )
     return cnts, hierarchy
 
 
@@ -250,7 +259,7 @@ def _check_polygons(approx: npt.NDArray[np.intc]) -> Optional[str]:
         angles = get_angles(approx)
         if np.all(compare_angles(angles, 90, 5)):
             lengths = get_lengths(approx)
-            if (lengths[0] - np.sum(lengths) / 4) / (np.sum(lengths) / 4) < 0.05:
+            if (lengths[0]) / (np.sum(lengths) / 4) < 0.05:
                 shape_name = "SQUARE"
             else:
                 shape_name = "RECTANGLE"
@@ -296,8 +305,8 @@ def find_color_in_shape(
         if current_index == -1:
             break
 
-    cv2.imshow("mask", mask)
-    cv2.waitKey(0)
+    # cv2.imshow("mask", mask)
+    # cv2.waitKey(0)
 
     mask = np.where(mask > 0, True, False)
 
@@ -375,32 +384,39 @@ def id_shape(
 
     if denoised is None:
         denoised = cv2.fastNlMeansDenoisingColored(
-            src=img_param, dst=denoised, templateWindowSize=7, searchWindowSize=21, h=5, hColor=10
+            src=img_param, dst=denoised, templateWindowSize=7, searchWindowSize=21, h=10, hColor=10
         )
+        denoised = cv2.GaussianBlur(denoised, ksize=(5, 5), sigmaX=5, sigmaY=5)
 
     if cnts is None:
         if edge_detected is None:
             cnts, hierarchy = get_contours(denoised)
         else:
             cnts, hierarchy = get_contours(img_param=edge_detected, edge_detected=True)
-    print(cnts)
+    # print(cnts)
     bw_denoised: npt.NDArray[np.uint8] = cv2.cvtColor(denoised, cv2.COLOR_BGR2GRAY)
 
     shape, shape_index = pick_out_shape(cnts)
     peri = cv2.arcLength(shape, True)
-    approx = cv2.approxPolyDP(shape, 0.01 * peri, True)
+    approx = cv2.approxPolyDP(shape, 0.02 * peri, True)
+    
+    img_copy = np.copy(img_param)
+    cv2.drawContours(img_copy, [approx], -1, (0, 255, 0), 1)
+    cv2.imshow("test", img_copy)
+    cv2.waitKey(0)
 
-    shape_name = _check_convexity_defect_shapes(approx=approx)
+    try:
+        shape_name = _check_convexity_defect_shapes(approx=approx)
+    except:
+        raise RuntimeError(
+            "Contour detection error: physically impossible self-intersections present")
 
     if shape_name is None:
         shape_name = _check_circular_shapes(bw_denoised=bw_denoised, shape=shape)
 
     if shape_name is None:
         shape_name = _check_polygons(approx=approx)
-    img_copy = np.copy(img_param)
-    cv2.drawContours(img_copy, [shape], -1, (0, 255, 0), 1)
-    cv2.imshow("test", img_copy)
-    cv2.waitKey(0)
+    
     if shape_name is not None:
         color_name: Optional[str] = None
         if find_color:
@@ -413,8 +429,9 @@ def id_shape(
 
 if __name__ == "__main__":
     img: npt.NDArray[np.uint8] = cv2.imread(
-        "C:/Users/natem/code/multirotor/standard-object-detection-testing/quartercircle.jpg"
+        "C:/Users/natem/code/multirotor/standard-object-detection-testing/odlc_test/DJI_0408.JPG"
     )
+    img = img[1250:1400, 3220:3390]
     cv2.imshow("img", img)
     cv2.waitKey(0)
     # if you have already done pre-processing you can add it, see id_shape() docs
