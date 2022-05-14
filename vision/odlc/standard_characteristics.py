@@ -383,7 +383,7 @@ def id_shape(
         by the rules, or that my code doesn't work
     """
     shape_name: Optional[str] = None
-    procd_img: npt.NDArray[np.uint8]
+    procd_img: npt.NDArray[np.uint8] = np.zeros(1, np.uint8)
 
     if procd_img_param is None:
         procd_img = cv2.fastNlMeansDenoisingColored(
