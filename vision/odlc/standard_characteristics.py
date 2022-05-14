@@ -20,7 +20,7 @@ ODLC_SHAPES: Dict[int, str] = {
     8: "OCTAGON",
 }
 
-# in BGR 
+# in BGR
 # values for colors were obtained by finding the RGB (BGR)
 # color for the color that is widely accepted (ie 0, 0, 0 for black)
 # then with gray in the middle I have a sphere that i move all of the color
@@ -313,7 +313,7 @@ def find_color_in_shape(
     shape_partition = np.array([(img_param[mask]).reshape(-1, 3)])
 
     color = np.array(np.uint8(np.average(shape_partition, 1)))
-    print(color)
+    # print(color)
     return color
 
 
@@ -334,7 +334,7 @@ def parse_color(color: npt.NDArray[np.uint8]) -> Optional[str]:
 
 def id_shape(
     img_param: npt.NDArray[np.uint8],
-    denoised: Optional[npt.NDArray[np.uint8]] = None,
+    procd_img_param: Optional[npt.NDArray[np.uint8]] = None,
     edge_detected: Optional[npt.NDArray[np.uint8]] = None,
     cnts: Optional[Tuple[npt.NDArray[np.intc], ...]] = None,
     find_color: bool = True,
@@ -349,10 +349,12 @@ def id_shape(
     -----------
     img_param : npt.NDArray[np.uint8]
         this is the unaltered (except for being cropped to just the shape in question) image
-    denoised : npt.NDArray[np.uint8], Optional
+    procd_img_param : npt.NDArray[np.uint8], Optional
         If the image has already been denoised/blurred (Some testing suggested that denoised
         images yield better results with Canny edge detection than blurred ones) earlier in the
         pipeline, then it can be passed in as a parameter to avoid doing the same work twice
+        I ended up doing both denoising, and blurring for best results in my included
+        preproccessing. Also it is supposed to be processed_image_parameter but I suck at abbrev.
     edge_detected : npt.NDArray[np.uint8], Optional
         If the image has already had edge detection applied to it earlier in the pipeline, then it
         can be passed in to avoid doing work twice
@@ -381,42 +383,46 @@ def id_shape(
         by the rules, or that my code doesn't work
     """
     shape_name: Optional[str] = None
+    procd_img: npt.NDArray[np.uint8]
 
-    if denoised is None:
-        denoised = cv2.fastNlMeansDenoisingColored(
-            src=img_param, dst=denoised, templateWindowSize=7, searchWindowSize=21, h=10, hColor=10
+    if procd_img_param is None:
+        procd_img = cv2.fastNlMeansDenoisingColored(
+            src=img_param, dst=procd_img, templateWindowSize=7, searchWindowSize=21, h=10, hColor=10
         )
-        denoised = cv2.GaussianBlur(denoised, ksize=(5, 5), sigmaX=5, sigmaY=5)
+        procd_img = cv2.GaussianBlur(procd_img, ksize=(5, 5), sigmaX=5, sigmaY=5)
+    else:
+        procd_img = procd_img_param
 
     if cnts is None:
         if edge_detected is None:
-            cnts, hierarchy = get_contours(denoised)
+            cnts, hierarchy = get_contours(procd_img)
         else:
             cnts, hierarchy = get_contours(img_param=edge_detected, edge_detected=True)
     # print(cnts)
-    bw_denoised: npt.NDArray[np.uint8] = cv2.cvtColor(denoised, cv2.COLOR_BGR2GRAY)
+    bw_denoised: npt.NDArray[np.uint8] = cv2.cvtColor(procd_img, cv2.COLOR_BGR2GRAY)
 
     shape, shape_index = pick_out_shape(cnts)
     peri = cv2.arcLength(shape, True)
     approx = cv2.approxPolyDP(shape, 0.02 * peri, True)
-    
-    img_copy = np.copy(img_param)
-    cv2.drawContours(img_copy, [approx], -1, (0, 255, 0), 1)
-    cv2.imshow("test", img_copy)
-    cv2.waitKey(0)
+
+    # img_copy = np.copy(img_param)
+    # cv2.drawContours(img_copy, [approx], -1, (0, 255, 0), 1)
+    # cv2.imshow("test", img_copy)
+    # cv2.waitKey(0)
 
     try:
         shape_name = _check_convexity_defect_shapes(approx=approx)
-    except:
+    except Exception as problem:
         raise RuntimeError(
-            "Contour detection error: physically impossible self-intersections present")
+            "Contour detection error: physically impossible self-intersections present"
+        ) from problem
 
     if shape_name is None:
         shape_name = _check_circular_shapes(bw_denoised=bw_denoised, shape=shape)
 
     if shape_name is None:
         shape_name = _check_polygons(approx=approx)
-    
+
     if shape_name is not None:
         color_name: Optional[str] = None
         if find_color:
