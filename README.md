@@ -7,6 +7,10 @@ Missouri S&amp;T Multirotor Robot Design Team's code for the Association for Unm
 - [Installation and Setup](#installation-and-setup)
 - [Running / Testing Code](#running-and-testing-code)
 - [Contributing](#contributing-code)
+  - [Creating a Branch](#creating-a-branch)
+  - [Committing Code](#committing-code)
+    - [Setting Up Pre-Commit](#setting-up-pre-commit)
+    - [Committing Unfinished Code](#committing-unfinished-code)
 - [License](#license)
 
 ## Codebase Structure
