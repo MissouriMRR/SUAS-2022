@@ -97,7 +97,7 @@ def multi_rot_text_img(
 
     Returns
     -------
-    (character, orientation, color) : Tuple[str | None, str | None, str | None]
+    (character, orientation, color) : Tuple[Optional[str], Optional[str], Optional[str]]
         Resulting characteristics of text detection
     """
     text_engine: TextCharacteristics = TextCharacteristics()
