@@ -1,9 +1,9 @@
 """State to fly in ODLC search grid in set pattern"""
 import logging
 from mavsdk import System
-from ..state_settings import StateSettings
-from state import State
-from states.land import Land
+from flight.state_settings import StateSettings
+from flight.states.state import State
+from flight.states.land import Land
 
 
 class StandardODLC(State):
@@ -12,7 +12,7 @@ class StandardODLC(State):
 
     Attributes
     ----------
-        N/A
+        None
 
     Methods
     -------
@@ -30,7 +30,7 @@ class StandardODLC(State):
 
         Returns
         -------
-            Land : State
+            Land
                 State in which drone returns to takeoff location and lands
         """
         return Land(self.state_settings)

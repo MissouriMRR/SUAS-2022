@@ -1,9 +1,9 @@
 """State to search for Emergent ODLC object"""
 import logging
 from mavsdk import System
-from ..state_settings import StateSettings
-from state import State
-from states.offaxis_odlc import OffAxisODLC
+from flight.state_settings import StateSettings
+from flight.states.state import State
+from flight.states.offaxis_odlc import OffAxisODLC
 
 
 class EmergentODLC(State):
@@ -12,7 +12,7 @@ class EmergentODLC(State):
 
     Attributes
     ----------
-        N/A
+        None
 
     Methods
     -------
@@ -30,7 +30,7 @@ class EmergentODLC(State):
 
         Returns
         -------
-            Land : State
+            Land
                 State where drone returns to takeoff location and lands
         """
         return OffAxisODLC(self.state_settings)

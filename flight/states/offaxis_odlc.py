@@ -1,9 +1,9 @@
 """State to fly towards Off Axis ODLC for image capture"""
 import logging
 from mavsdk import System
-from ..state_settings import StateSettings
-from state import State
-from states.land import Land
+from flight.state_settings import StateSettings
+from flight.states.state import State
+from flight.states.land import Land
 
 
 class OffAxisODLC(State):
@@ -12,7 +12,7 @@ class OffAxisODLC(State):
 
     Attributes
     ----------
-        N/A
+        None
 
     Methods
     -------
@@ -30,7 +30,7 @@ class OffAxisODLC(State):
 
         Returns
         -------
-            Land : State
+            Land
                 State to return to takeoff location and land the drone
         """
         return Land(self.state_settings)

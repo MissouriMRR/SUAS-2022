@@ -1,22 +1,22 @@
 """Run flight plan assembled in pre-processing to fly to all waypoints sequentially"""
 import logging
 from mavsdk import System
-from state import State
-from ..state_settings import StateSettings
-from states.land import Land
+from flight.states.state import State
+from flight.state_settings import StateSettings
+from flight.states.land import Land
 
 
 class Waypoints(State):
     """
     State to fly to each waypoint in mission plan, using Obstacle Avoidance during flight
 
-    Methods
-    -------
-        run() -> Land: For each waypoint, flies to Latlon & avoids any obstacles
-
     Attributes
     ----------
         None
+
+    Methods
+    -------
+        run() -> Land: For each waypoint, flies to Latlon & avoids any obstacles
     """
     async def run(self, drone: System) -> Land:
         """
@@ -29,6 +29,7 @@ class Waypoints(State):
 
         Returns
         -------
-            Land: landing state to land drone after finishing tasks
+            Land
+                landing state to land drone after finishing tasks
         """
         return Land(self.state_settings)

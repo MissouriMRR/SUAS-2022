@@ -1,23 +1,23 @@
 """Beginning state of flight operation, proceed to pre-processing"""
 import logging
 from mavsdk import System
-from state import State
-from ..state_settings import StateSettings
-from states.pre_processing import PreProcess
+from flight.states.state import State
+from flight.state_settings import StateSettings
+from flight.states.pre_processing import PreProcess
 
 
 class Start(State):
     """
     Preliminary state, proceed state machine into pre-processing
 
+    Attributes
+    ----------
+        None
+
     Methods
     -------
         begin() -> PreProcess
             beginning function to start state machine, proceeding to pre-processing step
-
-    Attributes
-    ----------
-        None
     """
     async def begin(self, drone: System) -> PreProcess:
         """
@@ -30,7 +30,7 @@ class Start(State):
 
         Returns
         -------
-            PreProcess : State
+            PreProcess
                 data pre-processing state, to advance state machine
         """
         return PreProcess(self.state_settings)

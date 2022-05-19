@@ -1,12 +1,17 @@
 """Base State class which all other states inherit"""
 import logging
 from mavsdk import System
-from ..state_settings import StateSettings
+from flight.state_settings import StateSettings
 
 
 class State:
     """
     Base State class
+
+    Attributes
+    ----------
+        state_settings : StateSettings
+            Attributes of flight plan, i.e. purpose & title
 
     Methods
     -------
@@ -15,11 +20,6 @@ class State:
                                 end of the machine
         _check_arm_or_arm() -> None
             Determines if drone is armed, and if not, arms it.
-
-    Attributes
-    ----------
-        state_settings : StateSettings
-            Attributes of flight plan, i.e. purpose & title
     """
 
     def __init__(self, state_settings: StateSettings) -> None:
@@ -30,10 +30,6 @@ class State:
         ----------
             state_settings: StateSettings
                 class which contains basic competition data
-
-        Returns
-        -------
-            None
         """
         logging.info('State "%s" has begun', self.name)
         self.state_settings: StateSettings = state_settings
@@ -46,9 +42,6 @@ class State:
         ----------
             drone: System
                 drone object for MAVSDK control
-        Returns
-        -------
-            None
         """
         return
 
@@ -60,10 +53,6 @@ class State:
         ---------
             drone: System
                 The drone system; used for flight operations.
-
-        Returns
-        -------
-            None
         """
         async for is_armed in drone.telemetry.armed():
             if not is_armed:
@@ -77,13 +66,5 @@ class State:
     def name(self):
         """
         Getter function to return the name of the class
-
-        Parameters
-        ----------
-            N/A
-
-        Returns
-        -------
-            Name property of current state class
         """
         return type(self).__name__

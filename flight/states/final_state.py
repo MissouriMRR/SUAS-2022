@@ -1,8 +1,8 @@
 """Final state to end all drone processes"""
 import logging
 from mavsdk import System
-from state import State
-from ..state_settings import StateSettings
+from flight.states.state import State
+from flight.state_settings import StateSettings
 
 
 class Final(State):
@@ -22,9 +22,5 @@ class Final(State):
         ----------
             drone: System
                 drone object that must be passed to any function with control of the drone
-
-        Returns
-        -------
-            None
         """
         return

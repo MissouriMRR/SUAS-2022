@@ -1,23 +1,23 @@
 """Landing the drone at home position after each other task is finished"""
 import logging
 from mavsdk import System
-from state import State
-from ..state_settings import StateSettings
-from states.final_state import Final
+from flight.states.state import State
+from flight.state_settings import StateSettings
+from flight.states.final_state import Final
 
 
 class Land(State):
     """
     State to land the drone safely after finishing other flight & vision tasks
 
-    Parameters
-    ----------
-        run() -> Final
-            Running the landing procedure after returning to home
-
     Attributes
     ----------
         None
+
+    Methods
+    ----------
+        run() -> Final
+            Running the landing procedure after returning to home
     """
     async def run(self, drone: System) -> Final:
         """
@@ -30,6 +30,7 @@ class Land(State):
 
         Returns
         -------
-            Final: final state for ending state machine
+            Final
+                final state for ending state machine
         """
         return Final(self.state_settings)
