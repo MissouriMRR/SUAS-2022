@@ -167,7 +167,8 @@ def filter_characters(character: str, orientation: str) -> Tuple[str, str]:
     # maps uncommon character to more common character with
     # number of orientation steps to take
     character_maps: Dict[str, Tuple[str, int]] = {
-        "W": ("M", 4)
+        "W": ("M", 4),
+        "Z": ("N", 2),
     }  # NOTE: need to revisit when we decide which letters to exclude
 
     new_character: str = character
