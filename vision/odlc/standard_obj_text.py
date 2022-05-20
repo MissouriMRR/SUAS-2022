@@ -73,7 +73,10 @@ def rotate_text_img(img: npt.NDArray[np.uint8], degrees: int) -> npt.NDArray[np.
 
 
 def multi_rot_text_img(
-    img: npt.NDArray[np.uint8], bounds: BoundingBox, drone_degree: float, degree_step: int = 10
+    img: npt.NDArray[np.uint8],
+    bounds: BoundingBox,
+    drone_degree: float,
+    degree_step: int = 10,
 ) -> Tuple[Optional[str], Optional[str], Optional[str]]:
     """
     Rotates the image and runs text detection until text has been detected or
@@ -114,7 +117,7 @@ def multi_rot_text_img(
     )
 
     # iteratively rotate the image and run text detection
-    for deg in np.arange(0, 360, degree_step):
+    for deg in np.arange(0, 360, degree_step, dtype=int):
         text_engine.img = rotate_text_img(img, deg)  # rotate the image another step
 
         # rotate the bounding box to match the rotated image
@@ -125,10 +128,12 @@ def multi_rot_text_img(
 
         # run text detection and characteristics
         character, orientation, color = text_engine.get_text_characteristics(
-            rotated_bounds, drone_degree
-        )
+            rotated_bounds, drone_degree + float(deg)
+        )  # Note: rotation degree added to drone degree to account for image rotation
 
-        if character is not None:  # return if characteristics were found
+        if (
+            (character is not None) and (orientation is not None) and (color is not None)
+        ):  # return if characteristics were found
             return character, orientation, color
 
     return None, None, None  # Character was not found in the rotated images
@@ -304,7 +309,10 @@ class TextCharacteristics:
                     img_h, img_w = np.shape(processed_img)
                     if not (x == 0 and y == 0 and width == img_w and height == img_h):
                         t_bounds: Tuple[
-                            Tuple[int, int], Tuple[int, int], Tuple[int, int], Tuple[int, int]
+                            Tuple[int, int],
+                            Tuple[int, int],
+                            Tuple[int, int],
+                            Tuple[int, int],
                         ] = (
                             (x, y),
                             (x + width, y),
