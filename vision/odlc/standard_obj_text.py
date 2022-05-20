@@ -77,6 +77,7 @@ def multi_rot_text_img(
     bounds: BoundingBox,
     drone_degree: float,
     degree_step: int = 10,
+    filter_uncommon: bool = False,
 ) -> Tuple[Optional[str], Optional[str], Optional[str]]:
     """
     Rotates the image and runs text detection until text has been detected or
@@ -97,6 +98,9 @@ def multi_rot_text_img(
     degree_step : int
         Default: 10 degrees
         how much to rotate the image by for each iteration (in degrees)
+    filter_uncommon : bool
+        Default: False
+        whether or not to filter out/remap uncommon characters
 
     Returns
     -------
@@ -131,12 +135,58 @@ def multi_rot_text_img(
             rotated_bounds, drone_degree + float(deg)
         )  # Note: rotation degree added to drone degree to account for image rotation
 
+        # filter out uncommon characters
+        if filter_uncommon and (character is not None) and (orientation is not None):
+            character, orientation = filter_characters(character, orientation)
+
         if (
             (character is not None) and (orientation is not None) and (color is not None)
         ):  # return if characteristics were found
             return character, orientation, color
 
     return None, None, None  # Character was not found in the rotated images
+
+
+def filter_characters(character: str, orientation: str) -> Tuple[str, str]:
+    """
+    Exclude/map uncommon characters to common characters.
+
+    Parameters
+    ----------
+    character : str
+        character to check
+    orientation : str
+        orientation of character in the image (cardinal/intermediate direction)
+
+    Returns
+    -------
+    new_character, new_orientation : Tuple[str, str]
+        the new character/orientation if character is uncommon,
+            original character/orientation otherwise
+    """
+    # maps uncommon character to more common character with
+    # number of orientation steps to take
+    character_maps: Dict[str, Tuple[str, int]] = {
+        "W": ("M", 4)
+    }  # NOTE: need to revisit when we decide which letters to exclude
+
+    new_character: str = character
+    new_orientation: str = orientation
+
+    # if character is uncommon
+    if character in character_maps:
+        new_character = character_maps[character][0]  # remapped character
+
+        orientation_idx: int = (
+            POSSIBLE_ORIENTATIONS.index(orientation) + character_maps[character][1]
+        )  # new orientation
+        orientation_idx = (
+            orientation_idx if (orientation_idx < 8) else (orientation_idx - 8)
+        )  # wrap around if necessary
+
+        new_orientation = POSSIBLE_ORIENTATIONS[orientation_idx]  # remapped orientation
+
+    return new_character, new_orientation
 
 
 class TextCharacteristics:
