@@ -284,13 +284,19 @@ class Stitcher:
 
         return stitched[y : y + height, x : x + width]
 
-    def template_match(self) -> None:
+    def template_match(self,
+                       cimg: npt.NDArray[np.uint8],
+                       tcord: tuple,
+                       tpixel: tuple,
+                       ) -> npt.NDArray[np.uint8]:
         """
         Mathes the center image with the final image to get center coordinate.
         NOTE: Not yet implemeneted.
         """
+        cw, ch = cimg.shape[:2]
+        cpix: tuple = (cw/2, ch/2)
+        dfxy: tuple = (cpix[0] - tpixel[0], cpix[1] - tpixel[1])
 
-        raise NotImplementedError("Function not Implemented")
 
     def crop_ratio(self) -> None:
         """
