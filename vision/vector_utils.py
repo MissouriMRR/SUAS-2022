@@ -8,6 +8,10 @@ import mavsdk
 SENSOR_WIDTH = 13.2
 SENSOR_HEIGHT = 8.8
 
+# The rotation offset of the camera to the drone. The offset is applied in pixel_intersect
+# Set to [0, -90, 0] when the camera is facing directly downwards
+ROTATION_OFFSET = [0, 0, 0]
+
 
 def get_fov(focal_length: float, sensor_size: float) -> float:
     """
@@ -30,8 +34,8 @@ def get_fov(focal_length: float, sensor_size: float) -> float:
 
 
 def focal_length_to_fovs(
-        focal_length: float,
-        sensor_size: Optional[Tuple[float, float]] = (SENSOR_WIDTH, SENSOR_HEIGHT)
+    focal_length: float,
+    sensor_size: Optional[Tuple[float, float]] = (SENSOR_WIDTH, SENSOR_HEIGHT),
 ) -> Tuple[float, float]:
     """
     Converts a given focal length to the horizontal and vertical fields of view in radians
@@ -51,33 +55,30 @@ def focal_length_to_fovs(
     return get_fov(focal_length, sensor_size[0]), get_fov(focal_length, sensor_size[1])
 
 
-# This gets the actual angle of the edge of the camera view; this can be derived using a square
-# pyramid with height 1
-def edge_angle(horizontal_angle: float, vertical_angle: float) -> float:
+def edge_angle(v_angle: float, h_angle: float) -> float:
     """
-    Finds the angle needed to rotate
+    Finds the angle such that rotating by edge_angle on the Y axis then rotating by h_angle on
+    the Z axis gives a vector an angle v_angle with the Y axis
+
+    Can be derived using a square pyramid of height 1
 
     Parameters
     ----------
-    horizontal_angle
-    vertical_angle
-
+    v_angle : float
+        The vertical angle
+    h_angle : float
+        The horizontal angle
     Returns
     -------
-
+    edge_angle : float
+        The angle to rotate vertically
     """
-    return np.arctan(np.tan(horizontal_angle) * np.cos(vertical_angle))
 
-
-# Calculates the other angle if one FOV is known and the other isn't (DELETE THIS)
-def find_angle(angle: float, aspect_ratio: float) -> float:
-    return 2 * np.arctan(aspect_ratio * np.tan(angle / 2))
+    return np.arctan(np.tan(v_angle) * np.cos(h_angle))
 
 
 def plane_collision(
-        ray_direction: npt.NDArray[np.float64],
-        height: float = 1,
-        epsilon: float = 1e-6
+    ray_direction: npt.NDArray[np.float64], height: float = 1, epsilon: float = 1e-6
 ) -> npt.NDArray[np.float64]:
     """
     Returns the point where a ray intersects the XY plane
@@ -105,7 +106,9 @@ def plane_collision(
     plane_normal: npt.NDArray[np.float64] = np.array([0, 0, 1])
 
     plane_point: npt.NDArray[np.float64] = np.array([0, 0, 0])  # Any point on the plane
-    ray_point: npt.NDArray[np.float64] = np.array([0, 0, height])  # Origin point of the ray
+    ray_point: npt.NDArray[np.float64] = np.array(
+        [0, 0, height]
+    )  # Origin point of the ray
 
     ndotu: np.float64 = plane_normal.dot(ray_direction)
 
@@ -123,8 +126,7 @@ def plane_collision(
 
 
 def euler_rotate(
-        vector: npt.NDArray[np.float64],
-        rotation: List[float]
+    vector: npt.NDArray[np.float64], rotation_deg: List[float]
 ) -> npt.NDArray[np.float64]:
     """
     Rotates a vector based on a given roll, pitch, and yaw.
@@ -136,7 +138,7 @@ def euler_rotate(
     ----------
     vector: npt.NDArray[np.float64]
         A vector represented by an XYZ coordinate that will be rotated
-    rotation: List[float]
+    rotation_deg: List[float]
         The [roll, pitch, yaw] rotation in radians
     Returns
     -------
@@ -145,10 +147,10 @@ def euler_rotate(
     """
 
     # Reverse the Y and Z rotation to match MAVSDK convention
-    rotation[1] *= -1
-    rotation[2] *= -1
+    rotation_deg[1] *= -1
+    rotation_deg[2] *= -1
 
-    return R.from_euler('xyz', rotation).apply(vector)
+    return R.from_euler("xyz", rotation_deg).apply(vector)
 
 
 def camera_vector(h_angle: float, v_angle: float) -> npt.NDArray[np.float64]:
@@ -202,9 +204,7 @@ def pixel_angle(fov: float, ratio: float) -> float:
 
 
 def pixel_vector(
-        pixel: Tuple[int, int],
-        image_shape: Tuple[int, int, int],
-        focal_length: float
+    pixel: Tuple[int, int], image_shape: Tuple[int, int, int], focal_length: float
 ) -> npt.NDArray[np.float64]:
     """
     Generates a vector representing the given pixel.
@@ -232,16 +232,16 @@ def pixel_vector(
 
     return camera_vector(
         pixel_angle(fov_h, pixel[1] / image_shape[1]),
-        pixel_angle(fov_v, pixel[0] / image_shape[0])
+        pixel_angle(fov_v, pixel[0] / image_shape[0]),
     )
 
 
 def pixel_intersect(
-        pixel: Tuple[int, int],
-        image_shape: Tuple[int, int, int],
-        focal_length: float,
-        attitude: mavsdk.telemetry.EulerAngle,
-        height: Optional[float] = 1
+    pixel: Tuple[int, int],
+    image_shape: Tuple[int, int, int],
+    focal_length: float,
+    rotation_deg: List[float],
+    height: Optional[float] = 1,
 ) -> npt.NDArray[np.float64]:
     """
     Finds the intersection [X,Y] of a given pixel with the ground.
@@ -255,11 +255,8 @@ def pixel_intersect(
         The shape of the image (returned by image.shape when image is a numpy image array)
     focal_length : float
         The camera's focal length
-    attitude : mavsdk.telemetry.EulerAngle
-        The rotation of the drone given by MAVSDK
-        For testing purposes, you can generate an EulerAngle object as following:
-        mavsdk.telemetry.EulerAngle(roll_deg, pitch_deg, yaw_deg, 0)
-        With 0 as the input for the timestamp which is not needed.
+    rotation_deg : List[float]
+        The [roll, pitch, yaw] rotation in degrees
     height : Optional[float]
         The height of the drone in any units. If a height is given, the units of the output will
         be the units of the input. Defaults to 1.
@@ -272,16 +269,12 @@ def pixel_intersect(
     # Create the normalized vector representing the direction of the given pixel
     vector: npt.NDArray[np.float64] = pixel_vector(pixel, image_shape, focal_length)
 
-    # Extract the values from the EulerAngle object
-    cam_roll: float = np.deg2rad(attitude.roll_deg)
-    cam_pitch: float = np.deg2rad(attitude.pitch_deg)
-    cam_yaw: float = np.deg2rad(attitude.yaw_deg)
+    rotation = np.deg2rad(rotation_deg)
 
-    vector = euler_rotate(vector, [cam_roll, cam_pitch, cam_yaw])
+    vector = euler_rotate(vector, rotation)
+
+    vector = euler_rotate(vector, ROTATION_OFFSET)
 
     intersect: npt.NDArray[np.float64] = plane_collision(vector, height)
 
     return intersect
-
-# TODO:
-#   Specify radians for each
