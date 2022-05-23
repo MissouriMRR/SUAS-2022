@@ -132,7 +132,7 @@ def deskew(
     flipped = np.flip(src_pts, axis=1)
 
     intersects = np.float32(
-        [pixel_intersect(point, image.shape, focal_length, rotation_deg) for point in flipped]
+        [pixel_intersect(point, image.shape, focal_length, rotation_deg, 1) for point in flipped]
     )
 
     # Flip the endpoints over the X axis (top left is 0,0 for images)

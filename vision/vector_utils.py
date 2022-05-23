@@ -1,6 +1,6 @@
-import numpy.typing as npt
-from typing import List, Tuple, Optional
+from typing import List, Tuple
 import numpy as np
+import numpy.typing as npt
 from scipy.spatial.transform import Rotation as R
 
 # Sony RX100 vii sensor size
@@ -32,26 +32,24 @@ def get_fov(focal_length: float, sensor_size: float) -> float:
     return 2 * np.arctan(sensor_size / (2 * focal_length))
 
 
-def focal_length_to_fovs(
-    focal_length: float,
-    sensor_size: Optional[Tuple[float, float]] = (SENSOR_WIDTH, SENSOR_HEIGHT),
-) -> Tuple[float, float]:
+def focal_length_to_fovs(focal_length: float) -> Tuple[float, float]:
     """
     Converts a given focal length to the horizontal and vertical fields of view in radians
+
+    Uses SENSOR_WIDTH and SENSOR_HEIGHT, which are set to 13.2 and 8.8 respectively, the size of
+    the sensor in the Sony RX100 vii
 
     Parameters
     ----------
     focal_length: float
         The focal length of the camera in millimeters
-    sensor_size: Optional[Tuple[float, float]]
-        The dimensions (width, height) of the sensor. Defaults to SENSOR_WIDTH and SENSOR_HEIGHT,
-        which are set to 13.2 and 8.8 respectively, the size of the sensor in the Sony RX100 vii
     Returns
     -------
     fields_of_view : Tuple[float, float]
-        The horizontal and vertical fields of view in radians
+        The fields of view in radians
+        Format is [horizontal, vertical]
     """
-    return get_fov(focal_length, sensor_size[0]), get_fov(focal_length, sensor_size[1])
+    return get_fov(focal_length, SENSOR_WIDTH), get_fov(focal_length, SENSOR_HEIGHT)
 
 
 def edge_angle(v_angle: float, h_angle: float) -> float:
@@ -77,7 +75,7 @@ def edge_angle(v_angle: float, h_angle: float) -> float:
 
 
 def plane_collision(
-    ray_direction: npt.NDArray[np.float64], height: float = 1, epsilon: float = 1e-6
+    ray_direction: npt.NDArray[np.float64], height: float
 ) -> npt.NDArray[np.float64]:
     """
     Returns the point where a ray intersects the XY plane
@@ -88,38 +86,21 @@ def plane_collision(
         XYZ coordinates that represent the direction a ray faces from (0, 0, 0)
     height : float
         The Z coordinate for the starting height of the ray; can be any units
-    epsilon : float
-        Minimum value for the dot product of the ray direction and plane normal
 
-    Raises
-    ------
-    RuntimeError: "no intersection or line is parallel to plane"
-        Occurs when the ray direction is facing away from or parallel to the plane
+    Returns
+    -------
+    intersect : npt.NDArray[np.float64]
+        The ray's intersection with the plane in [X,Y] format
 
-    References
-    ----------
-    http://rosettacode.org/wiki/Find_the_intersection_of_a_line_with_a_plane#Python
     """
+    # Find the "time" at which the line intersects the plane
+    # Line is defined as ray_direction * time + origin.
+    # Origin is the point at X, Y, Z = 0, 0, height
 
-    # Define the direction of the side face of the plane (In this case, facing upwards towards +Z)
-    plane_normal: npt.NDArray[np.float64] = np.array([0, 0, 1])
+    time: np.float64 = -height / ray_direction[2]
+    intersect: npt.NDArray[np.float64] = ray_direction[:2] * time
 
-    plane_point: npt.NDArray[np.float64] = np.array([0, 0, 0])  # Any point on the plane
-    ray_point: npt.NDArray[np.float64] = np.array([0, 0, height])  # Origin point of the ray
-
-    ndotu: np.float64 = plane_normal.dot(ray_direction)
-
-    # Checks to make sure the ray is pointing into the plane
-    if -ndotu < epsilon:
-        raise RuntimeError("no intersection or line is parallel to plane")
-
-    # I didn't make this math but it works
-    w: npt.NDArray[np.float64] = ray_point - plane_point
-    si: np.float64 = -plane_normal.dot(w) / ndotu
-    psi: npt.NDArray[np.float64] = w + si * ray_direction + plane_point
-
-    psi = np.delete(psi, -1)  # Remove the Z coordinate since it's always 0
-    return psi
+    return intersect
 
 
 def euler_rotate(
@@ -238,7 +219,7 @@ def pixel_intersect(
     image_shape: Tuple[int, int, int],
     focal_length: float,
     rotation_deg: List[float],
-    height: Optional[float] = 1,
+    height: float,
 ) -> npt.NDArray[np.float64]:
     """
     Finds the intersection [X,Y] of a given pixel with the ground.
@@ -254,9 +235,9 @@ def pixel_intersect(
         The camera's focal length
     rotation_deg : List[float]
         The [roll, pitch, yaw] rotation in degrees
-    height : Optional[float]
-        The height of the drone in any units. If a height is given, the units of the output will
-        be the units of the input. Defaults to 1.
+    height : float
+        The height that the image was taken at. The units of the output will be the units of the
+        input.
     Returns
     -------
     intersect : npt.NDArray[np.float64]
@@ -266,7 +247,7 @@ def pixel_intersect(
     # Create the normalized vector representing the direction of the given pixel
     vector: npt.NDArray[np.float64] = pixel_vector(pixel, image_shape, focal_length)
 
-    rotation_deg = np.deg2rad(rotation_deg)
+    rotation_deg = np.deg2rad(rotation_deg).tolist()
 
     vector = euler_rotate(vector, rotation_deg)
 
