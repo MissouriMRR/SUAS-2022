@@ -288,15 +288,48 @@ class Stitcher:
                        cimg: npt.NDArray[np.uint8],
                        tcord: tuple,
                        tpixel: tuple,
+                       simg: npt.NDArray[np.uint8]
                        ) -> npt.NDArray[np.uint8]:
         """
-        Mathes the center image with the final image to get center coordinate.
-        NOTE: Not yet implemeneted.
-        """
-        cw, ch = cimg.shape[:2]
-        cpix: tuple = (cw/2, ch/2)
-        dfxy: tuple = (cpix[0] - tpixel[0], cpix[1] - tpixel[1])
+        Uses the center image of the stitched image to calculate
+        how far the current center of the stitched image is from the desired center
+        of the stitched image and then crops the final stitched image
+        to make the centers align.
 
+        Parameters
+        ----------
+        cimg: npt.NDArray[np.uint8]
+            Center image of stitched that contains target
+        tcord: tuple
+            Desired coordinates of the center of stitched image in (row,col) format
+            Currently not implemented
+        tpixel: tuple
+            Pixel location of desired coordinates in (row,col) format
+        simg: npt.NDArray[np.uint8]
+            Final stitched image
+
+        Returns
+        -------
+        npt.NDArray[np.uint8]
+            Cropped version of stitched image
+        """
+        ch, cw = cimg.shape[:2]
+        sh, sw = simg.shape[:2]
+        cpix: tuple = (int(ch / 2), int(cw / 2))
+        dfxy: tuple = (cpix[0] - int(tpixel[0]), cpix[1] - int(tpixel[1]))
+
+        if dfxy[0] < 0:
+            if dfxy[1] < 0:
+                cropImg: npt.NDArray[np.uint8] = simg[abs(dfxy[0] * 2):sh, abs(dfxy[1] * 2):sw]
+            else:
+                cropImg: npt.NDArray[np.uint8] = simg[abs(dfxy[0] * 2):sh, 0:sw - (dfxy[1] * 2)]
+        elif dfxy[0] > 0:
+            if dfxy[1] < 0:
+                cropImg: npt.NDArray[np.uint8] = simg[0:sh - (dfxy[0] * 2), abs(dfxy[1] * 2):sw]
+            else:
+                cropImg: npt.NDArray[np.uint8] = simg[0:sh - (dfxy[0] * 2), 0:sw - (dfxy[1] * 2)]
+
+        return cropImg
 
     def crop_ratio(self) -> None:
         """
