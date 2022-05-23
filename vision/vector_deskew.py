@@ -1,7 +1,4 @@
 import cv2
-import mypy
-import pylint
-import black
 
 import coordinate_lengths
 from vector_utils import *
@@ -86,9 +83,7 @@ def get_coordinates(
     longitude_length = coordinate_lengths.longitude_length(drone_coordinates[0])
 
     # Find the pixel's intersect with the ground to get the location relative to the drone
-    intersect = pixel_intersect(
-        pixel, image_shape, focal_length, rotation_deg, altitude_m
-    )
+    intersect = pixel_intersect(pixel, image_shape, focal_length, rotation_deg, altitude_m)
 
     # Invert the X axis so that the longitude is correct
     intersect[1] *= -1
@@ -131,18 +126,13 @@ def deskew(
     """
     orig_height, orig_width, _ = image.shape
 
-    src_pts = np.float32(
-        [[0, 0], [orig_width, 0], [orig_width, orig_height], [0, orig_height]]
-    )
+    src_pts = np.float32([[0, 0], [orig_width, 0], [orig_width, orig_height], [0, orig_height]])
 
     # Convert XY to YX
     flipped = np.flip(src_pts, axis=1)
 
     intersects = np.float32(
-        [
-            pixel_intersect(point, image.shape, focal_length, rotation_deg)
-            for point in flipped
-        ]
+        [pixel_intersect(point, image.shape, focal_length, rotation_deg) for point in flipped]
     )
 
     # Flip the endpoints over the X axis (top left is 0,0 for images)
@@ -175,26 +165,3 @@ def deskew(
     )
 
     return result
-
-
-def main():
-    coords = get_coordinates(
-        (int(720 / 2), int(1080 / 2)), (720, 1080, 3), 10, [0, -45, 270], [0, 0], 10000
-    )
-    coords = np.around(coords, decimals=7)
-    print(coords)
-
-    dist = calculate_distance((720, 1080), (0, 0), (720, 1080, 3), 10, [0, -45, -45], 5)
-    print(dist)
-
-    image = cv2.imread("render1.png")
-    image = deskew(image, 10, [45, -45, -45])
-    cv2.imwrite("output.png", image)
-
-
-if __name__ == "__main__":
-    main()
-
-# TODO:
-#  Remove telemetry stuff
-#  Use camera offset

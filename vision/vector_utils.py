@@ -2,15 +2,14 @@ import numpy.typing as npt
 from typing import List, Tuple, Optional
 import numpy as np
 from scipy.spatial.transform import Rotation as R
-import mavsdk
 
 # Sony RX100 vii sensor size
 SENSOR_WIDTH = 13.2
 SENSOR_HEIGHT = 8.8
 
 # The rotation offset of the camera to the drone. The offset is applied in pixel_intersect
-# Set to [0, -90, 0] when the camera is facing directly downwards
-ROTATION_OFFSET = [0, 0, 0]
+# Set to [0.0, -90.0, 0.0] when the camera is facing directly downwards
+ROTATION_OFFSET = [0.0, 0.0, 0.0]
 
 
 def get_fov(focal_length: float, sensor_size: float) -> float:
@@ -106,9 +105,7 @@ def plane_collision(
     plane_normal: npt.NDArray[np.float64] = np.array([0, 0, 1])
 
     plane_point: npt.NDArray[np.float64] = np.array([0, 0, 0])  # Any point on the plane
-    ray_point: npt.NDArray[np.float64] = np.array(
-        [0, 0, height]
-    )  # Origin point of the ray
+    ray_point: npt.NDArray[np.float64] = np.array([0, 0, height])  # Origin point of the ray
 
     ndotu: np.float64 = plane_normal.dot(ray_direction)
 
@@ -117,7 +114,7 @@ def plane_collision(
         raise RuntimeError("no intersection or line is parallel to plane")
 
     # I didn't make this math but it works
-    w: npt.NDArray[np.int64] = ray_point - plane_point
+    w: npt.NDArray[np.float64] = ray_point - plane_point
     si: np.float64 = -plane_normal.dot(w) / ndotu
     psi: npt.NDArray[np.float64] = w + si * ray_direction + plane_point
 
@@ -269,9 +266,9 @@ def pixel_intersect(
     # Create the normalized vector representing the direction of the given pixel
     vector: npt.NDArray[np.float64] = pixel_vector(pixel, image_shape, focal_length)
 
-    rotation = np.deg2rad(rotation_deg)
+    rotation_deg = np.deg2rad(rotation_deg)
 
-    vector = euler_rotate(vector, rotation)
+    vector = euler_rotate(vector, rotation_deg)
 
     vector = euler_rotate(vector, ROTATION_OFFSET)
 
