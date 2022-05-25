@@ -23,12 +23,16 @@ class Stitcher:
         Folder path for images needed to be stitched
     center_image: npt.NDArray[np.uint8]
         Image that should be the center of the competition area
+    target_pixel: tuple
+        Pixel location of desired center coordinate of final stitched image
     """
 
     def __init__(self) -> None:
         self.image_path: str = ""
 
         self.center_image: npt.NDArray[np.uint8] = np.array([])
+
+        self.target_pixel: tuple = ()
 
     def multiple_image_stitch(self) -> npt.NDArray[np.uint8]:
         """
@@ -73,6 +77,7 @@ class Stitcher:
 
         # Crop final image of black space
         final_image = self.crop_space(final_image, black_pixels)
+        final_image = self.template_match(final_image)
 
         return final_image
 
@@ -284,12 +289,7 @@ class Stitcher:
 
         return stitched[y : y + height, x : x + width]
 
-    def template_match(self,
-                       cimg: npt.NDArray[np.uint8],
-                       tcord: tuple,
-                       tpixel: tuple,
-                       simg: npt.NDArray[np.uint8]
-                       ) -> npt.NDArray[np.uint8]:
+    def template_match(self, simg: npt.NDArray[np.uint8]) -> npt.NDArray[np.uint8]:
         """
         Uses the center image of the stitched image to calculate
         how far the current center of the stitched image is from the desired center
@@ -298,13 +298,6 @@ class Stitcher:
 
         Parameters
         ----------
-        cimg: npt.NDArray[np.uint8]
-            Center image of stitched that contains target
-        tcord: tuple
-            Desired coordinates of the center of stitched image in (row,col) format
-            Currently not implemented
-        tpixel: tuple
-            Pixel location of desired coordinates in (row,col) format
         simg: npt.NDArray[np.uint8]
             Final stitched image
 
@@ -313,10 +306,11 @@ class Stitcher:
         npt.NDArray[np.uint8]
             Cropped version of stitched image
         """
-        ch, cw = cimg.shape[:2]
+
+        ch, cw = self.center_image.shape[:2]
         sh, sw = simg.shape[:2]
         cpix: tuple = (int(ch / 2), int(cw / 2))
-        dfxy: tuple = (cpix[0] - int(tpixel[0]), cpix[1] - int(tpixel[1]))
+        dfxy: tuple = (cpix[0] - int(self.target_pixel[0]), cpix[1] - int(self.target_pixel[1]))
 
         if dfxy[0] < 0:
             if dfxy[1] < 0:
