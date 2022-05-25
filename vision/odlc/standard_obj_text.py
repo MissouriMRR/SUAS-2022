@@ -15,6 +15,154 @@ from vision.common.bounding_box import ObjectType, BoundingBox
 from vision.odlc.config_odlc import POSSIBLE_COLORS, POSSIBLE_ORIENTATIONS
 
 
+def rotate_text_img(img: npt.NDArray[np.uint8], degrees: int) -> npt.NDArray[np.uint8]:
+    """
+    Rotate the image containing the text by a certain degree.
+
+    Parameters
+    ----------
+    img: npt.NDArray[np.uint8]
+        the image to rotate
+    degrees: int
+        by how many degrees to rotate the image
+
+    Returns
+    -------
+    rot_img: npt.NDArray[np.uint8]
+        the rotated image
+    """
+    # center point of the image to rotate around
+    dimensions: Tuple[int, int, int] = np.shape(img)
+    center_pt: Tuple[int, int] = (
+        int(dimensions[0] / 2),
+        int(dimensions[1] / 2),
+    )
+
+    # rotate the image by degrees
+    rot_mat: npt.NDArray[np.uint8] = cv2.getRotationMatrix2D(center_pt, degrees, 1.0)
+    rot_img = cv2.warpAffine(img, rot_mat, img.shape[1::-1], flags=cv2.INTER_LINEAR)
+
+    return rot_img
+
+
+def multi_rot_text_img(
+    img: npt.NDArray[np.uint8],
+    bounds: BoundingBox,
+    drone_degree: float,
+    degree_step: int = 10,
+    filter_uncommon: bool = False,
+) -> Tuple[Optional[str], Optional[str], Optional[str]]:
+    """
+    Rotates the image and runs text detection until text has been detected or
+    image has been rotated back to original state.
+
+    NOTE: Running the function multiple times on the same image increases the amount
+    of time text detection will take, depending on how big/small the degree_step is.
+
+    Parameters
+    ----------
+    img : npt.NDArray[np.uint8]
+        the image containing the ODLC object to detect text on
+    bounds : BoundingBox
+        the bounds of the ODLC object in the image
+    drone_degree : float
+        rotation angle of the drone relative to north
+        this is the yaw degree
+    degree_step : int
+        Default: 10 degrees
+        how much to rotate the image by for each iteration (in degrees)
+    filter_uncommon : bool
+        Default: False
+        whether or not to filter out/remap uncommon characters
+
+    Returns
+    -------
+    (character, orientation, color) : Tuple[Optional[str], Optional[str], Optional[str]]
+        Resulting characteristics of text detection
+    """
+    text_engine: TextCharacteristics = TextCharacteristics()
+    character: Optional[str]
+    orientation: Optional[str]
+    color: Optional[str]
+    character, orientation, color = None, None, None
+
+    # center point of the image
+    dimensions: Tuple[int, int, int] = np.shape(img)
+    center_pt: Tuple[int, int] = (
+        int(dimensions[0] / 2),
+        int(dimensions[1] / 2),
+    )
+
+    # iteratively rotate the image and run text detection
+    for deg in np.arange(0, 360, degree_step, dtype=int):
+        text_engine.img = rotate_text_img(img, deg)  # rotate the image another step
+
+        # rotate the bounding box to match the rotated image
+        rotated_bound_pts: Tuple[
+            Tuple[int, int], Tuple[int, int], Tuple[int, int], Tuple[int, int]
+        ] = bounds.rotate_points(angle=deg, center_pt=center_pt)
+        rotated_bounds: BoundingBox = BoundingBox(rotated_bound_pts, ObjectType.EMG_OBJECT)
+
+        # run text detection and characteristics
+        character, orientation, color = text_engine.get_text_characteristics(
+            rotated_bounds, drone_degree + float(deg)
+        )  # Note: rotation degree added to drone degree to account for image rotation
+
+        # filter out uncommon characters
+        if filter_uncommon and (character is not None) and (orientation is not None):
+            character, orientation = filter_characters(character, orientation)
+
+        if (
+            (character is not None) and (orientation is not None) and (color is not None)
+        ):  # return if characteristics were found
+            return character, orientation, color
+
+    return None, None, None  # Character was not found in the rotated images
+
+
+def filter_characters(character: str, orientation: str) -> Tuple[str, str]:
+    """
+    Exclude/map uncommon characters to common characters.
+
+    Parameters
+    ----------
+    character : str
+        character to check
+    orientation : str
+        orientation of character in the image (cardinal/intermediate direction)
+
+    Returns
+    -------
+    new_character, new_orientation : Tuple[str, str]
+        the new character/orientation if character is uncommon,
+            original character/orientation otherwise
+    """
+    # maps uncommon character to more common character with
+    # number of orientation steps to take
+    character_maps: Dict[str, Tuple[str, int]] = {
+        "W": ("M", 4),
+        "Z": ("N", 2),
+    }  # NOTE: need to revisit when we decide which letters to exclude
+
+    new_character: str = character
+    new_orientation: str = orientation
+
+    # if character is uncommon
+    if character in character_maps:
+        new_character = character_maps[character][0]  # remapped character
+
+        orientation_idx: int = (
+            POSSIBLE_ORIENTATIONS.index(orientation) + character_maps[character][1]
+        )  # new orientation
+        orientation_idx = (
+            orientation_idx if (orientation_idx < 8) else (orientation_idx - 8)
+        )  # wrap around if necessary
+
+        new_orientation = POSSIBLE_ORIENTATIONS[orientation_idx]  # remapped orientation
+
+    return new_character, new_orientation
+
+
 class TextCharacteristics:
     """
     Class for detecting characteristics of text on standard objects.
@@ -164,7 +312,8 @@ class TextCharacteristics:
             output_type=pytesseract.Output.DICT,
             lang="eng",
             config="--psm 10",
-        )
+        )  # NOTE: a config of psm 0 is equivalent to image_to_osd
+        # NOTE: update to only use alphanumeric using -c tessedit_char_whitelist=0123456789
 
         ## Filter detected text to find valid characters ##
         found_characters: List[Tuple[str, BoundingBox]] = []
@@ -184,7 +333,10 @@ class TextCharacteristics:
                     img_h, img_w = np.shape(processed_img)
                     if not (x == 0 and y == 0 and width == img_w and height == img_h):
                         t_bounds: Tuple[
-                            Tuple[int, int], Tuple[int, int], Tuple[int, int], Tuple[int, int]
+                            Tuple[int, int],
+                            Tuple[int, int],
+                            Tuple[int, int],
+                            Tuple[int, int],
                         ] = (
                             (x, y),
                             (x + width, y),
