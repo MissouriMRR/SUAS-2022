@@ -12,9 +12,19 @@ import numpy.typing as npt
 from vision.common.bounding_box import ObjectType, BoundingBox
 
 
-def preprocess_odlc() -> None:
+def preprocess_odlc(img: npt.NDArray[np.uint8]) -> npt.NDArray[np.uint8]:
     """
     Preprocess image for use in odlc object detection.
+
+    Parameters
+    ----------
+    img : npt.NDArray[np.uint8]
+        the original image
+
+    Returns
+    -------
+    preprocessed : npt.NDArray[np.uint8]
+        the image after preprocessing
     """
     raise NotImplementedError("ODLC object detection not implemented")
 
@@ -35,4 +45,34 @@ def find_odlc_objs() -> None:
 
 # Driver for testing algoirhtms relating to odlc object detection
 if __name__ == "__main__":
-    pass
+    import argparse
+
+    parser: argparse.ArgumentParser = argparse.ArgumentParser(
+        description="Runs text characteristics algorithms. Must specify a file."
+    )
+
+    parser.add_argument(
+        "-f",
+        "--file_name",
+        type=str,
+        help="Filename of the image. Required argument.",
+    )
+
+    args: argparse.Namespace = parser.parse_args()
+
+    # no benchmark name specified, cannot continue
+    if not args.file_name:
+        raise RuntimeError("No file specified.")
+    file_name: str = args.file_name
+
+    test_img: npt.NDArray[np.uint8] = cv2.imread(file_name)
+
+    cv2.imshow("Original Image", test_img)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+
+    preprocessed_img = preprocess_odlc(test_img)
+
+    cv2.imshow("Image after preprocessing", preprocessed_img)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
