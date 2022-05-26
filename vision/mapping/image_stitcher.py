@@ -8,6 +8,7 @@ from typing import List, Tuple
 import numpy.typing as npt
 import numpy as np
 import cv2
+from vision.common import 
 import pyproj  # pylint: disable=W0611
 
 
@@ -77,6 +78,8 @@ class Stitcher:
 
         # Crop final image of black space
         final_image = self.crop_space(final_image, black_pixels)
+
+        # Crop final image to match desired center coordinate with image center
         final_image = self.template_match(final_image)
 
         return final_image
@@ -325,13 +328,26 @@ class Stitcher:
 
         return cropImg
 
-    def crop_ratio(self) -> None:
+    def crop_ratio(self, simg: npt.NDArray[np.uint8]) -> npt.NDArray[np.uint8]:
         """
         Crops final image into a 16:9 aspect ratio given the center.
         NOTE: Not yet implemeneted.
+
+        Parameters
+        ----------
+        simg: npt.NDArray[np.uint8]
+            Final stitched image
+
+        Returns
+        -------
+        npt.NDArray[np.uint8]
+            A 16:9 version of the final stitched image with the correct center
         """
 
-        raise NotImplementedError("Function not Implemented")
+
+
+
+
 
     def wgs_transform(self) -> None:
         """
