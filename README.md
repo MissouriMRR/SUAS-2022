@@ -1,13 +1,36 @@
 # SUAS-2022
 Missouri S&amp;T Multirotor Robot Design Team's code for the Association for Unmanned Vehicle Systems International's 2022 Student Unmanned Aerial Systems Competition (AUVSI SUAS 2022)
 
-# Requirements
+## Table of Contents
+- [Codebase Structure](#codebase-structure)
+- [Requirements](#requirements)
+- [Installation and Setup](#installation-and-setup)
+- [Running / Testing Code](#running-and-testing-code)
+- [Contributing](#contributing-code)
+  - [Creating a Branch](#creating-a-branch)
+  - [Committing Code](#committing-code)
+    - [Setting Up Pre-Commit](#setting-up-pre-commit)
+    - [Committing Unfinished Code](#committing-unfinished-code)
+- [License](#license)
+
+## Codebase Structure
+```text
+flight/  # Physical motor control, movement, path planning, and other flight related algorithms
+vision/  # Mapping, shape & text detection, and other computer vision related algorithms
+run.py  # Python program to run the competition code
+
+integration_tests/  # Programs written to test discrete modules of the competition code
+
+Information about files within each directory can be found in /<directory>/README.md
+```
+
+## Requirements
 To run our competition code, you will need:
 - A drone or drone [simulator](https://docs.px4.io/master/en/simulation/)
 - Python version 3.8 or higher
-- [Poetry](https://python-poetry.org/) (If you're curious, a list of managed dependencies can be found in the [project config](pyproject.toml))
+- [Poetry](https://python-poetry.org/) (a list of managed dependencies can be found in the [project config](pyproject.toml))
 
-# Installation
+## Installation and Setup
 Follow these instructions exactly based on your platform:
 1. Set up the development toolchain (platform dependent).
     - Follow the steps on [setting up your PX4 development toolchain](https://docs.px4.io/master/en/dev_setup/dev_env.html#setting-up-a-developer-environment-toolchain) based on your operating system
@@ -26,7 +49,7 @@ Follow these instructions exactly based on your platform:
 
 6. In the root of the repository, run `poetry install`
 
-# Running / Testing Code
+## Running and Testing Code
 - Follow the steps in the [installation instructions](#Installation) above
 - If you are working only on computer vision code, you may skip steps 1, 4, and 5
 - Initialize your virtual environment for running and testing code with
@@ -43,7 +66,7 @@ poetry shell
 exit
 ```
 
-# Contributing Code
+## Contributing Code
 1. Clone the repository with `git clone --recursive https://github.com/MissouriMRR/SUAS-2022.git`
 2. Make sure you are on the most up-to-date `develop` branch with `git switch develop` then `git pull`
 3. Create a branch with the proper naming format (see [Creating A Branch](#creating-a-branch))
@@ -52,7 +75,7 @@ exit
 6. Once it has been reviewed by the leads, it can be accepted and you can merge your branch into the develop branch.
 7. Once this is done, you may delete your branch, and the cycle continues...
 
-## Creating A Branch
+### Creating A Branch
 - To contribute, you must create a new branch for your code
 - If you've made changes in `develop` and want to add your changes to a new branch, use
 ```
@@ -66,11 +89,11 @@ git branch "branch_name"
 git checkout "branch_name"
 ```
    > `branch_name` should follow the convention `feature/{feature_name}`, or `hotfix/{fix_name}`
-## Committing Code
+### Committing Code
 - When programming with a VCS like Github, you should make changes and commit regularly with clear commit messages.
 - This repo uses git hooks for the automated execution of scrips that reformat & analyze your code when a commit is made.
 - In order for a pull request to be considered, commits must be made on a repo clone with pre-commit properly installed
-### Setting Up Pre-Commit
+#### Setting Up Pre-Commit
 - Here are the commands for the first-time setup & install of pre-commit for the repo
 ```
 pip install pre-commit
@@ -78,18 +101,18 @@ pre-commit install
 ```
 - You can then use `pre-commit run` to run the pre-commit hooks on all staged files or you can let it automatically trigger when you make a commit
 - Note that if you decide not to use `pre-commit run` before committing code, and your code gets reformatted but passes all of the analysis hooks, you must re-commit that code with a new second commit message either mirroring the previous commit message or stating that the code was reformatted. 
-### Committing Unfinished Code
+#### Committing Unfinished Code
 - When committing code, our pre-commit hooks will scan your files and look for errors, type inconsistencies, bad practices, and non-conformities to our coding style.
 - This means that your commit will be rejected if it fails any one of the pre-commit hooks.
 - Oftentimes, one may need to commit code to save their place or the current version in unfinished code and bypass pre-commit hooks
-#### Bypassing All Pre-Commit Hooks
+##### Bypassing All Pre-Commit Hooks
 - To bypass all pre-commit hooks, add the `--no-verify` flag to your `git commit` execution.
-#### Bypassing Invidual Pre-Commit Hooks
+##### Bypassing Invidual Pre-Commit Hooks
 - To bypass specific hooks on a module, place the following comments at the beginning of your file(s) for each respective hook.
     - Black: `# fmt: off`
     - Mypy: `# type: ignore`
     - Pylint: `# pylint: disable=all`
 - Pull requests made that bypass pre-commit hooks without prior approval will be rejected.
 
-# License
+## License
 We adopt the MIT License for our projects. Please read the [LICENSE](LICENSE) file for more info
