@@ -8,7 +8,7 @@ from typing import List, Tuple
 import numpy.typing as npt
 import numpy as np
 import cv2
-from vision.common import 
+from vision.common.camera_distances import calculate_distance
 import pyproj  # pylint: disable=W0611
 
 
@@ -33,7 +33,18 @@ class Stitcher:
 
         self.center_image: npt.NDArray[np.uint8] = np.array([])
 
-        self.target_pixel: tuple = ()
+        self.target_pixel: Tuple = ()
+
+        # Distance variables
+        self.focal_length: float = None
+
+        self.rot_deg: List = []
+
+        self.alt: float = None
+
+        self.image_shape: Tuple = ()
+
+        self.target_height: int = None
 
     def multiple_image_stitch(self) -> npt.NDArray[np.uint8]:
         """
@@ -86,7 +97,7 @@ class Stitcher:
 
     @classmethod
     def get_matches(
-        cls, img_1: npt.NDArray[np.uint8], img_2: npt.NDArray[np.uint8]
+            cls, img_1: npt.NDArray[np.uint8], img_2: npt.NDArray[np.uint8]
     ) -> npt.NDArray[np.float64]:
         """
         Finds matches between two grey images and establish a homography graph to warp two images.
@@ -161,10 +172,10 @@ class Stitcher:
 
     @classmethod
     def warp_images(
-        cls,
-        img_1: npt.NDArray[np.uint8],
-        img_2: npt.NDArray[np.uint8],
-        map_0: npt.NDArray[np.float64],
+            cls,
+            img_1: npt.NDArray[np.uint8],
+            img_2: npt.NDArray[np.uint8],
+            map_0: npt.NDArray[np.float64],
     ) -> npt.NDArray[np.uint8]:
         """
         Warps the perspective of the images based on the homography map and
@@ -223,8 +234,8 @@ class Stitcher:
             img_2, h_translation.dot(map_0), (x_max - x_min, y_max - y_min)
         )
         output_img[
-            -y_min : rows1 + -y_min,
-            -x_min : cols1 + -x_min,
+        -y_min: rows1 + -y_min,
+        -x_min: cols1 + -x_min,
         ] = img_1
 
         return output_img
@@ -290,7 +301,7 @@ class Stitcher:
         con = max(cnts, key=cv2.contourArea)
         (x, y, width, height) = cv2.boundingRect(con)
 
-        return stitched[y : y + height, x : x + width]
+        return stitched[y: y + height, x: x + width]
 
     def template_match(self, simg: npt.NDArray[np.uint8]) -> npt.NDArray[np.uint8]:
         """
@@ -312,8 +323,8 @@ class Stitcher:
 
         ch, cw = self.center_image.shape[:2]
         sh, sw = simg.shape[:2]
-        cpix: tuple = (int(ch / 2), int(cw / 2))
-        dfxy: tuple = (cpix[0] - int(self.target_pixel[0]), cpix[1] - int(self.target_pixel[1]))
+        cpix: Tuple = (int(ch / 2), int(cw / 2))
+        dfxy: Tuple = (cpix[0] - int(self.target_pixel[0]), cpix[1] - int(self.target_pixel[1]))
 
         if dfxy[0] < 0:
             if dfxy[1] < 0:
@@ -343,11 +354,32 @@ class Stitcher:
         npt.NDArray[np.uint8]
             A 16:9 version of the final stitched image with the correct center
         """
+        ch, cw = self.center_image.shape[:2]
+        top_left: Tuple = (0, 0)
+        bot_left: Tuple = (ch, 0)
 
+        # Feet per pixel
+        pix2dist: int = int(calculate_distance(top_left,
+                                               bot_left,
+                                               self.image_shape,
+                                               self.focal_length,
+                                               self.rot_deg,
+                                               self.alt) * 3.28084 / ch)
+        sh, sw = simg.shape[:2]
+        cur_height: int = pix2dist * sh
+        dif_height: int = cur_height - self.target_height
+        dpix: int = int(dif_height/pix2dist)
 
+        if dif_height > 0:
+            cutoff_h: int = int(dpix/2)
+            sh_new: int = sh - dpix
+            sw_new: int = int(sh_new * 16/9)
+            cutoff_w: int = int((sw - sw_new)/2)
+            cropImg: npt.NDArray[np.uint8] = simg[cutoff_h:(sh-cutoff_h), cutoff_w:(sw-cutoff_w)]
+        else:
+            pass
 
-
-
+        return cropImg
 
     def wgs_transform(self) -> None:
         """
