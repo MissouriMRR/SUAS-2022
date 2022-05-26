@@ -3,7 +3,8 @@ This has code to identify which shape (from the SUAS list of shapes) is present
 this file has the function id_shape() that takes an image that has been cropped using a
 bounding box algorithm. Refer to its documentation. All other functions are helper
 functions to make stuff nicer, please see id_shape() docstring to see potential
-ability to skip redundant img pre-processing
+ability to skip redundant img pre-processing. Also to provide better pre-processing because mine
+sucks.
 """
 from typing import Optional, Tuple, Dict
 import cv2
@@ -197,10 +198,8 @@ def _check_convexity_defect_shapes(approx: npt.NDArray[np.intc]) -> Optional[str
 
     if defects is not None:
         if len(defects) == 5:
-            # print("Star detected")
             return "STAR"
         if len(defects) == 4:
-            # print("Plus detected")
             return "PLUS"
     return None
 
@@ -389,9 +388,12 @@ def id_shape(
         procd_img = cv2.fastNlMeansDenoisingColored(
             src=img_param, dst=procd_img, templateWindowSize=7, searchWindowSize=21, h=10, hColor=10
         )
-        procd_img = cv2.GaussianBlur(procd_img, ksize=(5, 5), sigmaX=5, sigmaY=5)
+        procd_img = cv2.GaussianBlur(img_param, ksize=(7, 7), sigmaX=10, sigmaY=10)
     else:
         procd_img = procd_img_param
+
+    cv2.imshow("pre-processing", procd_img)
+    cv2.waitKey(0)
 
     if cnts is None:
         if edge_detected is None:
@@ -405,10 +407,11 @@ def id_shape(
     peri = cv2.arcLength(shape, True)
     approx = cv2.approxPolyDP(shape, 0.02 * peri, True)
 
-    # img_copy = np.copy(img_param)
-    # cv2.drawContours(img_copy, [approx], -1, (0, 255, 0), 1)
-    # cv2.imshow("test", img_copy)
-    # cv2.waitKey(0)
+    img_copy = np.copy(img_param)
+    cv2.drawContours(img_copy, [approx], -1, (0, 255, 0), 1)
+    cv2.drawContours(img_copy, [shape], -1, (255, 0, 0), 1)
+    cv2.imshow("test", img_copy)
+    cv2.waitKey(0)
 
     try:
         shape_name = _check_convexity_defect_shapes(approx=approx)
@@ -435,9 +438,9 @@ def id_shape(
 
 if __name__ == "__main__":
     img: npt.NDArray[np.uint8] = cv2.imread(
-        "C:/Users/natem/code/multirotor/standard-object-detection-testing/odlc_test/DJI_0408.JPG"
+        "C:/Users/natem/code/multirotor/standard-object-detection-testing/odlc_test/DJI_0417.DNG"
     )
-    img = img[1250:1400, 3220:3390]
+    img = img[730:900, 2620:2790]
     cv2.imshow("img", img)
     cv2.waitKey(0)
     # if you have already done pre-processing you can add it, see id_shape() docs
