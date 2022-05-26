@@ -93,6 +93,9 @@ class Stitcher:
         # Crop final image to match desired center coordinate with image center
         final_image = self.template_match(final_image)
 
+        # Cropping image to 16:9 ratio
+        final_image = self.crop_ratio(final_image)
+
         return final_image
 
     @classmethod
