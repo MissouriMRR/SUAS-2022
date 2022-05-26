@@ -354,6 +354,7 @@ class Stitcher:
         npt.NDArray[np.uint8]
             A 16:9 version of the final stitched image with the correct center
         """
+
         ch, cw = self.center_image.shape[:2]
         top_left: Tuple = (0, 0)
         bot_left: Tuple = (ch, 0)
@@ -377,7 +378,7 @@ class Stitcher:
             cutoff_w: int = int((sw - sw_new)/2)
             cropImg: npt.NDArray[np.uint8] = simg[cutoff_h:(sh-cutoff_h), cutoff_w:(sw-cutoff_w)]
         else:
-            pass
+            cropImg: npt.NDArray[np.uint8] = simg
 
         return cropImg
 
