@@ -6,7 +6,7 @@ import cv2
 import numpy as np
 import numpy.typing as npt
 
-from vector_utils import pixel_intersect
+from vision.common.vector_utils import pixel_intersect
 
 
 def deskew(

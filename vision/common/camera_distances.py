@@ -5,8 +5,8 @@ from typing import Tuple, List
 import numpy as np
 import numpy.typing as npt
 
-import coordinate_lengths
-from vector_utils import pixel_intersect
+from vision.common import coordinate_lengths
+from vision.common.vector_utils import pixel_intersect
 
 
 def get_coordinates(
