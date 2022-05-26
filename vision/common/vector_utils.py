@@ -1,8 +1,7 @@
 """Functions that use vectors to calculate camera intersections with the ground"""
 
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 import numpy.typing as npt
-
 import numpy as np
 from scipy.spatial.transform import Rotation
 
@@ -21,7 +20,7 @@ def pixel_intersect(
     focal_length: float,
     rotation_deg: List[float],
     height: float,
-) -> npt.NDArray[np.float64]:
+) -> Optional[npt.NDArray[np.float64]]:
     """
     Finds the intersection [X,Y] of a given pixel with the ground relative to the camera.
     A camera with no rotation points in the +X direction and is centered at [0, 0, height].
@@ -41,8 +40,9 @@ def pixel_intersect(
         input.
     Returns
     -------
-    intersect : npt.NDArray[np.float64]
+    intersect : Optional[npt.NDArray[np.float64]]
         The coordinates [X,Y] where the pixel's vector intersects with the ground.
+        Returns None if there is no intersect.
     """
 
     # Create the normalized vector representing the direction of the given pixel
@@ -54,16 +54,17 @@ def pixel_intersect(
 
     vector = euler_rotate(vector, ROTATION_OFFSET)
 
-    intersect: npt.NDArray[np.float64] = plane_collision(vector, height)
+    intersect: Optional[npt.NDArray[np.float64]] = plane_collision(vector, height)
 
     return intersect
 
 
 def plane_collision(
     ray_direction: npt.NDArray[np.float64], height: float
-) -> npt.NDArray[np.float64]:
+) -> Optional[npt.NDArray[np.float64]]:
     """
     Returns the point where a ray intersects the XY plane
+    Returns None if there is no intersect.
 
     Parameters
     ----------
@@ -74,8 +75,9 @@ def plane_collision(
 
     Returns
     -------
-    intersect : npt.NDArray[np.float64]
+    intersect : Optional[npt.NDArray[np.float64]]
         The ray's intersection with the plane in [X,Y] format
+        Returns None if there is no intersect.
 
     """
     # Find the "time" at which the line intersects the plane
@@ -83,9 +85,12 @@ def plane_collision(
     # Origin is the point at X, Y, Z = (0, 0, height)
 
     time: np.float64 = -height / ray_direction[2]
-    intersect: npt.NDArray[np.float64] = ray_direction[:2] * time
 
-    return intersect
+    # Checks if the ray intersects with the plane
+    if np.isinf(time) or np.isnan(time) or time < 0:
+        return None
+
+    return ray_direction[:2] * time
 
 
 def pixel_vector(

@@ -1,12 +1,11 @@
 """Functions for calculating locations of objects in an image"""
 
-from typing import Tuple, List
+from typing import Tuple, List, Optional
 
 import numpy as np
 import numpy.typing as npt
 
-from vision.common import coordinate_lengths
-from vision.common.vector_utils import pixel_intersect
+from vision.common import coordinate_lengths, vector_utils
 
 
 def get_coordinates(
@@ -16,9 +15,10 @@ def get_coordinates(
     rotation_deg: List[float],
     drone_coordinates: List[float],
     altitude_m: float,
-) -> Tuple[float, float]:
+) -> Optional[Tuple[float, float]]:
     """
-    Calculates the coordinates of the given pixel
+    Calculates the coordinates of the given pixel.
+    Returns None if there is no valid intersect.
 
     Parameters
     ----------
@@ -37,17 +37,22 @@ def get_coordinates(
         The altitude of the drone in meters
     Returns
     -------
-    pixel_coordinates : Tuple[float, float]
-        The (latitude, longitude) coordinates of the pixel in degrees
+    pixel_coordinates : Optional[Tuple[float, float]]
+        The (latitude, longitude) coordinates of the pixel in degrees.
+
+        Equal to None if there is no valid intersect.
     """
     # Calculate the latitude and longitude lengths (in meters)
     latitude_length: float = coordinate_lengths.latitude_length(drone_coordinates[0])
     longitude_length: float = coordinate_lengths.longitude_length(drone_coordinates[0])
 
     # Find the pixel's intersect with the ground to get the location relative to the drone
-    intersect: npt.NDArray[np.float64] = pixel_intersect(
+    intersect: Optional[npt.NDArray[np.float64]] = vector_utils.pixel_intersect(
         pixel, image_shape, focal_length, rotation_deg, altitude_m
     )
+
+    if intersect is None:
+        return None
 
     # Invert the X axis so that the longitude is correct
     intersect[1] *= -1
@@ -66,7 +71,7 @@ def calculate_distance(
     focal_length: float,
     rotation_deg: List[float],
     altitude: float,
-) -> float:
+) -> Optional[float]:
     """
     Calculates the physical distance between two points on the ground represented by pixel
     locations. Units of `distance` are the same as the units of `altitude`
@@ -86,15 +91,21 @@ def calculate_distance(
         will be the units of the input.
     Returns
     -------
-    distance : float
+    distance : Optional[float]
         The distance between the two pixels. Units are the same units as `altitude`
+
+        Returns None if one or both of the points did not have an intersection
     """
-    intersect1: npt.NDArray[np.float64] = pixel_intersect(
+    intersect1: Optional[npt.NDArray[np.float64]] = vector_utils.pixel_intersect(
         pixel1, image_shape, focal_length, rotation_deg, altitude
     )
-    intersect2: npt.NDArray[np.float64] = pixel_intersect(
+    intersect2: Optional[npt.NDArray[np.float64]] = vector_utils.pixel_intersect(
         pixel2, image_shape, focal_length, rotation_deg, altitude
     )
+
+    # Checks if the intersects were valid
+    if intersect1 is None or intersect2 is None:
+        return None
 
     # Calculate the distance between the two intersects
     distance: float = float(np.linalg.norm(intersect1 - intersect2))

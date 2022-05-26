@@ -15,10 +15,15 @@ def deskew(
     rotation_deg: List[float],
     scale: float = 1,
     interpolation: Optional[int] = cv2.INTER_LINEAR,
-) -> Tuple[npt.NDArray[np.uint8], npt.NDArray[np.float64]]:
+) -> Tuple[Optional[npt.NDArray[np.uint8]], Optional[npt.NDArray[np.float64]]]:
     """
     Distorts an image to generate an overhead view of the photo. Parts of the image will be
     completely black where the camera could not see.
+
+    Image is assumed to be a 3:2 aspect ratio to match the drone camera.
+
+    Returns (None, None) if the rotation and focal_length information does not generate a valid
+    ending location.
 
     Parameters
     ----------
@@ -35,16 +40,26 @@ def deskew(
         The cv2 interpolation type to be used when deskewing.
     Returns
     -------
-    (deskewed_image, corner_points) : Tuple[npt.NDArray[np.uint8], npt.NDArray[np.float64]]
+    (deskewed_image, corner_points) : Tuple[
+                                            Optional[npt.NDArray[np.uint8]],
+                                            Optional[npt.NDArray[np.float64]]
+                                            ]
         deskewed_image : npt.NDArray[np.uint8]
             The deskewed image - the image is flattened with black areas in the margins
-        corner_points :
+
+            Returns None if no valid image could be generated.
+
+        corner_points : npt.NDArray[np.float64]]
             The corner points of the result in the image.
             Points are in order based on their location in the original image.
             Format is: (top left, top right, bottom right, bottom left), or
             1--2
             |  |
+
             4--3
+
+            Returns None if no valid image could be generated.
+
     """
     orig_height: int
     orig_width: int
@@ -54,17 +69,25 @@ def deskew(
     # 1--2
     # |  |
     # 4--3
-
     src_pts: npt.NDArray[np.float32] = np.array(
         [[0, 0], [orig_width, 0], [orig_width, orig_height], [0, orig_height]], dtype=np.float32
     )
+
+    # Use the walrus operator to assign the result to `intersect` only if the result is not None
     intersects: npt.NDArray[np.float32] = np.array(
         [
-            pixel_intersect(point, image.shape, focal_length, rotation_deg, 1)
+            intersect
             for point in np.flip(src_pts, axis=1)  # use np.flip to convert XY to YX
+            if (intersect := pixel_intersect(point, image.shape, focal_length, rotation_deg, 1))
+            is not None
         ],
         dtype=np.float32,
     )
+
+    # Checks if the length of the list is less than 4. If it is, that means one of the points
+    # failed and no valid image can be generated.
+    if intersects.shape[0] < 4:
+        return None, None
 
     # Flip the endpoints over the X axis (top left is 0,0 for images)
     intersects[:, 1] *= -1
