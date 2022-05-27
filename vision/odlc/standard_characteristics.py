@@ -6,10 +6,11 @@ functions to make stuff nicer, please see id_shape() docstring to see potential
 ability to skip redundant img pre-processing. Also to provide better pre-processing because mine
 sucks.
 """
-from typing import Optional, Tuple, Dict
+from typing import Optional, Tuple, Dict, List
 import cv2
 import numpy as np
 import numpy.typing as npt
+from config_odlc import POSSIBLE_COLORS
 
 
 ODLC_SHAPES: Dict[int, str] = {
@@ -21,36 +22,13 @@ ODLC_SHAPES: Dict[int, str] = {
     8: "OCTAGON",
 }
 
-# in BGR
-# values for colors were obtained by finding the RGB (BGR)
-# color for the color that is widely accepted (ie 0, 0, 0 for black)
-# then with gray in the middle I have a sphere that i move all of the color
-# points onto (still in the same vector direction away from gray, but now all
-# the same distance from gray)
-# https://www.desmos.com/calculator/zokjuf8rm9
-# link to the desmos page where I did some formulas
-# can put in a color and get out the new color that is a set distance from gray
-# but still in the same direction as the original
-ODLC_COLORS: Tuple[Tuple[npt.NDArray[np.int64], str], ...] = (
-    (np.array([185, 185, 185]), "WHITE"),
-    (np.array([69, 69, 69]), "BLACK"),
-    (np.array([127, 127, 127]), "GRAY"),
-    (np.array([69, 69, 185]), "RED"),
-    (np.array([185, 69, 69]), "BLUE"),
-    (np.array([69, 185, 69]), "GREEN"),
-    (np.array([198, 57, 127]), "PURPLE"),
-    (np.array([70, 185, 185]), "YELLOW"),
-    (np.array([58, 148, 196]), "ORANGE"),
-    (np.array([42, 76, 110]), "BROWN"),
-)
-
 
 def get_contours(
     img_param: npt.NDArray[np.uint8], edge_detected: bool = False
 ) -> Tuple[Tuple[npt.NDArray[np.intc], ...], npt.NDArray[np.intc]]:
     """
-    this will use canny edge detection to get all the contours of any shapes in the image and
-    return them in a tuple
+    this will use Laplacian edge detection to get all the contours of any shapes in the image and
+    return them in a tuple with the hierarchy
 
     parameters
     ----------
@@ -72,7 +50,15 @@ def get_contours(
     if edge_detected:
         edges = img_param
     else:
-        edges = cv2.Canny(img_param, 100, 100)
+        edges = cv2.Laplacian(
+            img_param, ddepth=cv2.CV_16S, ksize=3
+        )  # cv2.Canny(img_param, 100, 100)
+        edges = cv2.convertScaleAbs(edges)
+        edges = cv2.GaussianBlur(edges, (5, 5), 0)
+        edges = np.where(edges > 30, np.uint8(0), np.uint8(255))
+        # edges = cv2.GaussianBlur(edges, (7, 7), 0)
+        # cv2.imshow("edges", edges)
+        # cv2.waitKey(0)
 
     cnts: Tuple[npt.NDArray[np.intc]]
     cnts, hierarchy = cv2.findContours(edges, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
@@ -101,10 +87,13 @@ def pick_out_shape(cnts: Tuple[npt.NDArray[np.intc], ...]) -> Tuple[npt.NDArray[
     index = 0
     max_area: float = 0
     cnt: npt.NDArray[np.intc]
+    area: float = 0
     for i, cnt in enumerate(cnts):
-        if cv2.contourArea(cnt) > max_area:
+        area = cv2.contourArea(cnt)
+        if area > max_area:
             index = i
-            max_area = cv2.contourArea(cnt)
+            max_area = area
+    # print(f"{cnts}\n{cnts[index]}\n{index}")
     return cnts[index], index
 
 
@@ -275,7 +264,8 @@ def find_color_in_shape(
     shape_index: int,
 ) -> npt.NDArray[np.uint8]:
     """
-    function to get the BGR (RGB but backwards bc opencv says so) color of a shape.
+    function to get the BGR (RGB but backwards bc opencv says so) color of a shape, then converts
+    to hsv
     Quick explanation because i'm proud of it: It makes a mask based off of the contour, then
     will subtract all areas where there are contours inside of the shape, then take all of the
     masked pixels and find their average to get the color of the shape
@@ -289,7 +279,7 @@ def find_color_in_shape(
     cnts: Tuple[npt.NDArray[np.intc], ...]
         the originally found list of contours
     hierarchy: npt.NDArray[np.intc]
-        the hierarchy matrix provided by get_contours()
+        the hierarchy matrix found in get_contours()
     shape_index: int
         the index of the shape in cnts/hierarchy, provided by pick_out_shape()
     """
@@ -312,96 +302,138 @@ def find_color_in_shape(
     shape_partition = np.array([(img_param[mask]).reshape(-1, 3)])
 
     color = np.array(np.uint8(np.average(shape_partition, 1)))
+
+    color = cv2.cvtColor(np.array([color]), cv2.COLOR_BGR2HSV)
     # print(color)
     return color
 
 
 def parse_color(color: npt.NDArray[np.uint8]) -> Optional[str]:
     """
-    takes in a 1 pixel bgr image and will convert to hsv to compare it to a list of
+    takes in a 1 pixel hsv image and will compare it to a list of
     color ranges in ODLC_COLORS and will return the matching string in ODLC_COLORS
-    or none if no colors match
+    or None if no colors match
+    NOTE: Largely copied from _parse_color in standard_obj_text.py
     """
-    dist = 450.0  # bigger then the longest possible distance
-    best_color: Optional[str] = None
-    for pair in ODLC_COLORS:
-        if np.linalg.norm(color - pair[0]) < dist:
-            dist = float(np.linalg.norm(color - pair[0]))
-            best_color = pair[1]
-    return best_color
+    matched: List[str] = []
+    for col, ranges in POSSIBLE_COLORS.items():
+        if len(ranges) > 2:  # red has 2 ranges
+            if (cv2.inRange(color, np.array([ranges[1]]), np.array([ranges[0]]))[0, 0] == 255) or (
+                cv2.inRange(color, np.array([ranges[3]]), np.array([ranges[2]]))[0, 0] == 255
+            ):
+                matched.append(col)
+        elif cv2.inRange(color, np.array([ranges[1]]), np.array([ranges[0]]))[0, 0] == 255:
+            matched.append(col)
+
+    ## Determine distance to center to choose color if falls in multiple ##
+    color_name = None  # returns None if no match
+    if len(matched) > 1:  # 2+ matched colors
+        # find color with min dist to color value
+        best_dist: float = float("inf")
+
+        for col in matched:
+            dist: float = float("inf")
+            # get midpoint value of color range
+            if len(POSSIBLE_COLORS[col]) > 2:  # handle red's 2 ranges
+                mid1: float = np.mean(POSSIBLE_COLORS[col][:2])  # midpoint of range 1
+                mid2: float = np.mean(POSSIBLE_COLORS[col][2:])  # midpoint of range 2
+                dist = min(  # min dist of color to range mid
+                    np.sum(np.abs(color - mid1)),
+                    np.sum(np.abs(color - mid2)),
+                )
+            else:  # any color except red
+                mid: float = np.mean(POSSIBLE_COLORS[col])  # midpoint of range
+                dist = np.sum(np.abs(color - mid))  # dist of color to range mid
+
+            if dist < best_dist:  # color with min distance is the color chosen
+                best_dist = dist
+                color_name = col
+    elif len(matched) == 1:  # single matched color
+        color_name = matched[0]
+    return color_name
 
 
 def id_shape(
     img_param: npt.NDArray[np.uint8],
     procd_img_param: Optional[npt.NDArray[np.uint8]] = None,
     edge_detected: Optional[npt.NDArray[np.uint8]] = None,
-    cnts: Optional[Tuple[npt.NDArray[np.intc], ...]] = None,
+    cnts_param: Optional[Tuple[npt.NDArray[np.intc], ...]] = None,
+    hierarchy_param: Optional[npt.NDArray[np.intc]] = None,
     find_color: bool = True,
-) -> Tuple[str, Optional[str]]:
+) -> Tuple[Optional[str], Optional[str]]:
     """
     this is the main driver function for finding out what a given shape is. It assumes that the
     given image is a cropped image of just the bounding box arround the shape to be identified
     As in the whole shape is in the frame, but it comes as close to possible to filling the whole
-    frame
+    frame (but you dont need to do any weird image rotation, just an upright bounding box)
 
     parameters
     -----------
     img_param : npt.NDArray[np.uint8]
         this is the unaltered (except for being cropped to just the shape in question) image
     procd_img_param : npt.NDArray[np.uint8], Optional
-        If the image has already been denoised/blurred (Some testing suggested that denoised
-        images yield better results with Canny edge detection than blurred ones) earlier in the
+        If the image has already been denoised/blurred earlier in the
         pipeline, then it can be passed in as a parameter to avoid doing the same work twice
-        I ended up doing both denoising, and blurring for best results in my included
-        preproccessing. Also it is supposed to be processed_image_parameter but I suck at abbrev.
+        Also it is supposed to be processed_image_parameter but I suck at abbrev.
     edge_detected : npt.NDArray[np.uint8], Optional
         If the image has already had edge detection applied to it earlier in the pipeline, then it
         can be passed in to avoid doing work twice
-    cnts : Tuple[npt.NDArray[np.intc], ...], Optional
+    cnts_param : Tuple[npt.NDArray[np.intc], ...], Optional
         If the contour of the shape has already been found, then it can be passed in as a
         parameter. The contour should be passed inside of a tuple, so that if multiple contours
         are within the bounding box for the shape then my code can pick out the most relevant
         (biggest) one.
+    hierarchy_param: Optional[Tuple[npt.NDArray[np.intc], ...]]
+        This the data for the relations between contours that is provided by cv2.findCountours()
+        NOTE: If the contours are provided then the hierarchy MUST also be provided
     find_color: bool
         A flag to determine whether the function to identify the color of the shape should be used
         True is default and will find the color.
 
     returns
     ---------
-    Will return a tuple of 2 strings (unless it raises an error, see below) in the form of
+    Will return a tuple of 2 strings in the form of
     (shape_name, shape_color) unless find_color is set to False then will be (shape_name, None)
     will return one of: "STAR" "PLUS" "QUARTER_CIRCLE" "SEMI_CIRCLE" "CIRCLE" "TRIANGLE" "SQUARE"
     "RECTANGLE" "TRAPEZOID" "PENTAGON" "HEXAGON" "HEPTAGON" or "OCTOGON" depending on the shape
-    The color element in the returned tuple will also be false if the color could not be matched
+    The color element in the returned tuple will also be None if the color could not be matched
 
     raises
     -------
-    RuntimeError
-        with message "Shape failed all checks, make sure it is not a tree or something"
-        this means that the shape could not be matched to any of the possible shapes specified
-        by the rules, or that my code doesn't work
+    ValueError
+        with message "If contours are provided than the hierarchy from cv2.findContours() must
+        also be provided" If you already found the contours then you must also provide the
+        hierarchy provided from cv2.findContours must also be provided for my stuff to work
     """
     shape_name: Optional[str] = None
+    color_name: Optional[str] = None
     procd_img: npt.NDArray[np.uint8] = np.zeros(1, np.uint8)
 
     if procd_img_param is None:
-        procd_img = cv2.fastNlMeansDenoisingColored(
-            src=img_param, dst=procd_img, templateWindowSize=7, searchWindowSize=21, h=10, hColor=10
-        )
-        procd_img = cv2.GaussianBlur(img_param, ksize=(7, 7), sigmaX=10, sigmaY=10)
+        procd_img = cv2.GaussianBlur(img_param, (3, 3), 0)
+
+        procd_img = cv2.cvtColor(procd_img, cv2.COLOR_BGR2GRAY)
     else:
         procd_img = procd_img_param
 
     cv2.imshow("pre-processing", procd_img)
     cv2.waitKey(0)
 
-    if cnts is None:
+    cnts: Tuple[npt.NDArray[np.intc], ...]
+    hierarchy: npt.NDArray[np.intc]
+
+    if cnts_param is None:
         if edge_detected is None:
             cnts, hierarchy = get_contours(procd_img)
         else:
             cnts, hierarchy = get_contours(img_param=edge_detected, edge_detected=True)
+    elif hierarchy_param is not None:
+        cnts = cnts_param
+        hierarchy = hierarchy_param
+    else:
+        raise ValueError("If contours are provided than the hierarchy from cv2.findContours()")
     # print(cnts)
-    bw_denoised: npt.NDArray[np.uint8] = cv2.cvtColor(procd_img, cv2.COLOR_BGR2GRAY)
+    bw_denoised: npt.NDArray[np.uint8] = procd_img  # cv2.cvtColor(procd_img, cv2.COLOR_BGR2GRAY)
 
     shape, shape_index = pick_out_shape(cnts)
     peri = cv2.arcLength(shape, True)
@@ -413,12 +445,7 @@ def id_shape(
     cv2.imshow("test", img_copy)
     cv2.waitKey(0)
 
-    try:
-        shape_name = _check_convexity_defect_shapes(approx=approx)
-    except Exception as problem:
-        raise RuntimeError(
-            "Contour detection error: physically impossible self-intersections present"
-        ) from problem
+    shape_name = _check_convexity_defect_shapes(approx=approx)
 
     if shape_name is None:
         shape_name = _check_circular_shapes(bw_denoised=bw_denoised, shape=shape)
@@ -427,20 +454,18 @@ def id_shape(
         shape_name = _check_polygons(approx=approx)
 
     if shape_name is not None:
-        color_name: Optional[str] = None
         if find_color:
             color_name = parse_color(
                 find_color_in_shape(img_param, shape, cnts, hierarchy, shape_index)
             )
-        return shape_name, color_name
-    raise RuntimeError("Shape failed all checks, make sure it is not a tree or something")
+    return shape_name, color_name
 
 
 if __name__ == "__main__":
     img: npt.NDArray[np.uint8] = cv2.imread(
-        "C:/Users/natem/code/multirotor/standard-object-detection-testing/odlc_test/DJI_0417.DNG"
+        "C:/Users/natem/code/multirotor/standard-object-detection-testing/odlc_test/DJI_0413.JPG"
     )
-    img = img[730:900, 2620:2790]
+    img = img[2005:2375, 1910:2290]
     cv2.imshow("img", img)
     cv2.waitKey(0)
     # if you have already done pre-processing you can add it, see id_shape() docs
