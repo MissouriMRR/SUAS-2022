@@ -294,9 +294,6 @@ def find_color_in_shape(
         if current_index == -1:
             break
 
-    # cv2.imshow("mask", mask)
-    # cv2.waitKey(0)
-
     mask = np.where(mask > 0, True, False)
 
     shape_partition = np.array([(img_param[mask]).reshape(-1, 3)])
