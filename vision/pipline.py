@@ -16,86 +16,86 @@ import numpy as np
 from PIL import Image
 import numpy.typing as npt
 from typing import List, Tuple
-
-parent_dir = os.path.dirname(os.path.abspath(__file__))
-
-# Images for stitching
-stitch_dir = parent_dir + "\mapping\images"
-
-# Images for odlc
-image_dir = parent_dir + "\images"
+import logging
 
 from mapping.image_stitcher import Stitcher
 
-def get_focal(img_jpg: npt.NDArray[np.uint8]) -> float:
-    image = Image.open(img_jpg)
-    exifdata = image._getexif()
-    focal_length = exifdata.get(37386)
+parent_dir = os.path.dirname(os.path.abspath(__file__))
 
-    # for tag_id in exifdata:
-    #     tag = TAGS.get(tag_id,tag_id)
-    #     data = exifdata.get(tag_id)
-    #     if isinstance(data,bytes):
-    #         data=data.decode()
-    #     print(f"{tag:20}:{data}", " ", tag_id)
+class Pipeline:
+    def __init__(self) -> None:
+        self.compute_images = []
+        self.stitch_images = []
+        self.stitch_dir = parent_dir + "\mapping\images"
+        self.image_dir = parent_dir + "\images"
+        self.mapping_dir = parent_dir + "\mapping"
 
-    return focal_length
+    def get_focal(self, img_jpg: npt.NDArray[np.uint8]) -> float:
+        image = Image.open(img_jpg)
+        exifdata = image._getexif()
+        focal_length = exifdata.get(37386)
+        return focal_length
 
-def obj_in_frame(image: npt.NDArray[np.uint8], index: int, focal_length: float) -> Tuple(int, npt.NDArray[np.uint8]):
-    time.sleep(4)
-    print("Checking obj in frame...")
-    # Returns list of bounding boxes and index image.
-    
-    return index, [1]
+    def obj_in_frame(self, name: str, image: npt.NDArray[np.uint8], focal_length: float):
+        time.sleep(4)
+        print("Checking if " +  name + " in frame...")
+        # Returns list of bounding boxes and index image.
+        
+        return name, [1]
 
-def raw_img_process(r_image, b_boxes):
-    print("RAW image Processing")
-    time.sleep(2)
-    return
+    def raw_img_process(self, image, b_boxes):
+        print("RAW image Processing")
+        time.sleep(2)
+        return
 
-def img_scheduler(stitch: Stitcher, list_jpg: List[npt.NDArray[np.uint8]], list_raw: List[npt.NDArray[np.uint8]], list_focal: List[float]):
-    executor = futures.ThreadPoolExecutor()
-    check_frame = [executor.submit(obj_in_frame, image, index, list_focal[index]) for index, image in enumerate(list_jpg)]
-    # img_stitch =  executor.submit(stitch.multiple_image_stitch())
+    def img_scheduler(self, stitch, list_image):
+        executor = futures.ProcessPoolExecutor()
+        check_frame = [executor.submit(self.obj_in_frame, image[0], cv2.imread(image[0] + ".JPG"), list_image[1]) for  image in list_image]
 
-    # while True:
-    #     if(img_stitch.done()):
-    #         print("Stitch Done")
-    #         break
+        for detection in futures.as_completed(check_frame):
+            name, b_boxes = detection.result()
+            if b_boxes != None:
+                img_process = executor.submit(self.raw_img_process, cv2.imread(name + ".RAW"), b_boxes)
 
-    for detection in futures.as_completed(check_frame):
-        index, b_boxes = detection.result()
-        if b_boxes != None:
-            img_process = executor.submit(raw_img_process, list_raw[index], b_boxes)
+        img_stitch = stitch.multiple_image_stitch()
+        cv2.imwrite(os.path.join(self.mapping_dir , 'FINAL.JPG'), img_stitch)
+        print("Stitch Done")
 
-    return img_process
+        return img_process
 
-def init_vision():
-    stitch = Stitcher()
-    stitch.image_path = stitch_dir
+    def init_vision(self):
+        stitch = Stitcher()
+        stitch.image_path = self.stitch_images
+        list_image = []
 
-    list_jpg = []
-    list_raw = []
-    list_focal = []
+        for file in self.compute_images:
+            if file.endswith(".JPG"):
+                img = os.path.join(self.stitch_dir, file)
+                list_image.append([file[:-4], self.get_focal(img)])
 
-    if not os.listdir(stitch_dir):
-        raise IndexError("No Images")
-
-    for file in os.listdir(stitch_dir):
-        img = os.path.join(stitch_dir, file)
-        if file.endswith(".JPG"):
-            list_focal.append(get_focal(img))
-            list_jpg.append(cv2.imread(img))
-        if file.endswith(".RAW"):
-            list_raw.append(cv2.imread(img))
-
-    start = time.time()
-    res = img_scheduler(stitch, list_jpg, list_raw, list_focal)
-    while True:
-        if res.done():
-            end = time.time()
-            print("MULTIPROC", end-start)
-            break
+        res = self.img_scheduler(stitch, list_image)
 
 if __name__ == '__main__':
-    init_vision()
+    # create logger
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.DEBUG)
+
+    # logger config
+    file = logging.FileHandler(filename = "logger.log", mode='w')
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(message)s')
+    file.setFormatter(formatter)
+    logger.addHandler(file)
+
+    # logger.debug("WHAT")
+
+    pipe = Pipeline()
+
+    stitch_dir = parent_dir + "\mapping\images"
+
+    os.chdir(stitch_dir)
+
+    for file in os.listdir(stitch_dir):
+        pipe.compute_images.append(file)
+        pipe.stitch_images.append(file)
+
+    pipe.init_vision()
