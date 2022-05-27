@@ -76,7 +76,7 @@ class Stitcher:
                 blk_range = cv2.inRange(c_img, (0, 0, 0), (0, 0, 0))
                 black_pixels += cv2.countNonZero(blk_range)
 
-        # np.array([[21, 22, 39, 42, 59, 64, 81],
+        # ord = np.array([[21, 22, 39, 42, 59, 64, 81],
         #           [20, 23, 38, 43, 58, 65, 80],
         #           [19, 24, 37, 44, 57, 66, 79],
         #           [18, 25, 36, 45, 56, 67, 78],
@@ -84,7 +84,7 @@ class Stitcher:
         #           [16, 27, 34, 47, 54, 69, 76],
         #           [15, 28, 33, 48, 53, 70, 75],
         #           [14, 29, 32, 49, 52, 71, 74],
-        #           [13, 30, 31, 50, 51, 72, 73]])
+        #           [13, 30, 31, 50, 51, 72, 73]]).ravel()
 
         ord = np.array([21, 22, 20, 19, 23, 39, 42,
                         38, 24, 18, 17, 25, 37, 43,
@@ -103,27 +103,24 @@ class Stitcher:
         # Loop through all images in images list
         for i in ord[1:]:
             img = color_images[i-1]
-            try:
-                matches: npt.NDArray[np.float64] = self.get_matches(final_image, img)
-                final_image = self.warp_images(img, final_image, matches)
+            # try:
+            matches: npt.NDArray[np.float64] = self.get_matches(final_image, img)
+            final_image = self.warp_images(img, final_image, matches)
+            # except:
+            #     cv2.rotate(img, cv2.ROTATE_180)
+            #     matches: npt.NDArray[np.float64] = self.get_matches(final_image, img)
+            #     final_image = self.warp_images(img, final_image, matches)
 
-                ## Debug Code: Shows each iteration and which iteration stitcher is on # pylint: disable=fixme
-                test = resize(final_image, 10)
-                cv2.imshow("WIP Final", test)
-                cv2.waitKey(0)
-                cc += 1
-                print(cc)
-            except:
-                cv2.rotate(img, cv2.ROTATE_180)
-                matches: npt.NDArray[np.float64] = self.get_matches(final_image, img)
-                final_image = self.warp_images(img, final_image, matches)
+            ## Debug Code: Shows each iteration and which iteration stitcher is on # pylint: disable=fixme
+            test = resize(final_image, 10)
+            print(f"Current Image Size: {final_image.shape}")
+            cv2.imshow("WIP Final", test)
+            cv2.waitKey(0)
+            cc += 1
+            print(cc)
 
-                ## Debug Code: Shows each iteration and which iteration stitcher is on # pylint: disable=fixme
-                test = resize(final_image, 10)
-                cv2.imshow("WIP Final", test)
-                cv2.waitKey(0)
-                cc += 1
-                print(cc)
+            if cc > 8:
+                final_image = self.crop_box_overestimate(final_image)
 
         # Crop final image of black space
         final_image = self.crop_space(final_image, black_pixels)
@@ -185,7 +182,7 @@ class Stitcher:
 
         # Finding the best matches
         best_matches: List[cv2.DMatch] = [
-            match_0 for match_0, match_1 in matches if match_0.distance < 0.65 * match_1.distance
+            match_0 for match_0, match_1 in matches if match_0.distance < 0.7 * match_1.distance
         ]
 
         # Set minimum match condition
@@ -344,6 +341,43 @@ class Stitcher:
 
         return stitched[y: y + height, x: x + width]
 
+    def crop_box_overestimate(self, image):
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        blur = cv2.GaussianBlur(gray, (5, 5), 0)
+        _, thresh = cv2.threshold(blur, 1, 255, cv2.THRESH_BINARY)
+
+        cnts = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        cnts = cnts[0] if len(cnts) == 2 else cnts[1]
+        c = max(cnts, key=cv2.contourArea)
+
+        ###
+        marked = np.copy(image)
+        marked = cv2.drawContours(marked, cnts, -1, (0, 255, 0), 3)
+        ###
+
+        left = tuple(c[c[:, :, 0].argmin()][0])
+        right = tuple(c[c[:, :, 0].argmax()][0])
+        top = tuple(c[c[:, :, 1].argmin()][0])
+        bottom = tuple(c[c[:, :, 1].argmax()][0])
+
+        leftmost = min(left)
+        rightmost = max(right)
+        topmost = min(top)
+        bottommost = max(bottom)
+
+        ###
+        for pt in (left, right, top, bottom):
+            cv2.circle(marked, pt, 1*20, (0, 0, 255), 3*10)
+            cv2.circle(marked, pt, 10*20, (0, 0, 255), 1*10)
+
+        cv2.imshow("marked", resize(marked, 20))
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
+
+        cropped = image[topmost:bottommost, leftmost:rightmost]
+        return cropped
+    
+
     def template_match(self, simg: npt.NDArray[np.uint8]) -> npt.NDArray[np.uint8]:
         """
         Uses the center image of the stitched image to calculate
@@ -483,7 +517,7 @@ def resize(img: npt.NDArray[np.uint8], scale: int) -> npt.NDArray[np.uint8]:
     """
 
     mw = 1800
-    mh = 1000
+    mh = 1200
     imgh, imgw, _ = img.shape
     scale = int((mh/imgh)*100)
     scale_percent: int = scale  # percent of original size
