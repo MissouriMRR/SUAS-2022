@@ -9,7 +9,7 @@ import cv2
 import numpy as np
 import numpy.typing as npt
 
-from vision.common.bounding_box import ObjectType, BoundingBox
+# from vision.common.bounding_box import ObjectType, BoundingBox
 
 
 def preprocess_odlc(img: npt.NDArray[np.uint8]) -> npt.NDArray[np.uint8]:
@@ -26,12 +26,29 @@ def preprocess_odlc(img: npt.NDArray[np.uint8]) -> npt.NDArray[np.uint8]:
     preprocessed : npt.NDArray[np.uint8]
         the image after preprocessing
     """
-    raise NotImplementedError("ODLC object detection not implemented")
+    # grayscale
+    gray: npt.NDArray[np.uint8] = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+
+    # blur to remove noise
+    blur: npt.NDArray[np.uint8] = cv2.medianBlur(gray, ksize=9)
+
+    # threshold binarization
+    threshold: npt.NDArray[np.uint8]
+    _, threshold = cv2.threshold(blur, 127, 255, cv2.THRESH_BINARY)
+
+    return threshold
 
 
 def odlc_detection() -> None:
     """
     Detects odlc objects in the image.
+    """
+    raise NotImplementedError("ODLC object detection not implemented")
+
+
+def parse_contours() -> None:
+    """
+    Parses contours to create bounding boxes.
     """
     raise NotImplementedError("ODLC object detection not implemented")
 
