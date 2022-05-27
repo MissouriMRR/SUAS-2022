@@ -8,7 +8,7 @@ from typing import List, Tuple
 import numpy.typing as npt
 import numpy as np
 import cv2
-from vision.common.camera_distances import calculate_distance
+from vision.common.camera_distances import calculate_distance, get_coordinates
 import pyproj  # pylint: disable=W0611
 
 
@@ -33,7 +33,7 @@ class Stitcher:
 
         self.center_image: npt.NDArray[np.uint8] = np.array([])
 
-        self.target_pixel: Tuple = ()
+        self.target_cord: Tuple = ()
 
         # Distance variables
         self.focal_length: float = None
@@ -45,6 +45,8 @@ class Stitcher:
         self.image_shape: Tuple = ()
 
         self.target_height: int = None
+
+        self.drone_cords: List = []
 
     def multiple_image_stitch(self) -> npt.NDArray[np.uint8]:
         """
@@ -321,23 +323,50 @@ class Stitcher:
         Returns
         -------
         npt.NDArray[np.uint8]
-            Cropped version of stitched image
+            Cropped version of stitched image with the correct center
         """
+
+        top_left: Tuple = (0, 0)
 
         ch, cw = self.center_image.shape[:2]
         sh, sw = simg.shape[:2]
         cpix: Tuple = (int(ch / 2), int(cw / 2))
-        dfxy: Tuple = (cpix[0] - int(self.target_pixel[0]), cpix[1] - int(self.target_pixel[1]))
 
-        if dfxy[0] < 0:
-            if dfxy[1] < 0:
+        ccord_lat, ccord_long = get_coordinates(cpix,
+                                                self.image_shape,
+                                                self.focal_length,
+                                                self.rot_deg,
+                                                self.drone_cords,
+                                                self.alt)
+
+        tlcord_lat, tlcord_long = get_coordinates(top_left,
+                                                  self.image_shape,
+                                                  self.focal_length,
+                                                  self.rot_deg,
+                                                  self.drone_cords,
+                                                  self.alt)
+
+        pix_per_lat: float = abs((ch - top_left[0]) / (ccord_lat - tlcord_lat))
+        pix_per_long: float = abs((cw - top_left[1]) / (ccord_long - tlcord_long))
+
+        dcord: Tuple = (abs(self.target_cord[0] - tlcord_lat),
+                        abs(self.target_cord[1] - tlcord_long))
+
+        tpy: int = int(dcord[0] * pix_per_lat)
+        tpx: int = int(dcord[1] * pix_per_long)
+        target_pixel: Tuple = (tpy, tpx)
+
+        dfxy: Tuple = (cpix[0] - target_pixel[0], cpix[1] - target_pixel[1])
+
+        if dfxy[0] < 0:             # Above the target
+            if dfxy[1] < 0:         # Left of target
                 cropImg: npt.NDArray[np.uint8] = simg[abs(dfxy[0] * 2):sh, abs(dfxy[1] * 2):sw]
-            else:
+            else:                   # Right of target
                 cropImg: npt.NDArray[np.uint8] = simg[abs(dfxy[0] * 2):sh, 0:sw - (dfxy[1] * 2)]
-        elif dfxy[0] > 0:
-            if dfxy[1] < 0:
+        elif dfxy[0] > 0:           # Below the target
+            if dfxy[1] < 0:         # Left of target
                 cropImg: npt.NDArray[np.uint8] = simg[0:sh - (dfxy[0] * 2), abs(dfxy[1] * 2):sw]
-            else:
+            else:                   # Right of target
                 cropImg: npt.NDArray[np.uint8] = simg[0:sh - (dfxy[0] * 2), 0:sw - (dfxy[1] * 2)]
 
         return cropImg
@@ -372,16 +401,22 @@ class Stitcher:
         sh, sw = simg.shape[:2]
         cur_height: int = pix2dist * sh
         dif_height: int = cur_height - self.target_height
-        dpix: int = int(dif_height/pix2dist)
+        dpix: int = int(dif_height / pix2dist)
 
         if dif_height > 0:
-            cutoff_h: int = int(dpix/2)
+            cutoff_h: int = int(dpix / 2)
             sh_new: int = sh - dpix
-            sw_new: int = int(sh_new * 16/9)
-            cutoff_w: int = int((sw - sw_new)/2)
-            cropImg: npt.NDArray[np.uint8] = simg[cutoff_h:(sh-cutoff_h), cutoff_w:(sw-cutoff_w)]
+            sw_new: int = int(sh_new * 16 / 9)
+            cutoff_w: int = int((sw - sw_new) / 2)
+            cropImg: npt.NDArray[np.uint8] = simg[cutoff_h:(sh - cutoff_h),
+                                                  cutoff_w:(sw - cutoff_w)]
         else:
-            cropImg: npt.NDArray[np.uint8] = simg
+            if (sh * 16 / 9) < sw:
+                cutoff_w: int = int((sw - (sh * 16 / 9)) / 2)
+                cropImg: npt.NDArray[np.uint8] = simg[0:sh, cutoff_w:(sw - cutoff_w)]
+            else:
+                cutoff_h: int = int((sh - (sw * 9 / 16)) / 2)
+                cropImg: npt.NDArray[np.uint8] = simg[cutoff_h:(sh - cutoff_h), 0:sw]
 
         return cropImg
 
