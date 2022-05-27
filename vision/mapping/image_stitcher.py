@@ -8,7 +8,7 @@ from typing import List, Tuple
 import numpy.typing as npt
 import numpy as np
 import cv2
-from vision.common.camera_distances import calculate_distance, get_coordinates
+#from vision.common.camera_distances import calculate_distance, get_coordinates
 import pyproj  # pylint: disable=W0611
 
 
@@ -76,27 +76,63 @@ class Stitcher:
                 blk_range = cv2.inRange(c_img, (0, 0, 0), (0, 0, 0))
                 black_pixels += cv2.countNonZero(blk_range)
 
+        # np.array([[21, 22, 39, 42, 59, 64, 81],
+        #           [20, 23, 38, 43, 58, 65, 80],
+        #           [19, 24, 37, 44, 57, 66, 79],
+        #           [18, 25, 36, 45, 56, 67, 78],
+        #           [17, 26, 35, 46, 55, 68, 77],
+        #           [16, 27, 34, 47, 54, 69, 76],
+        #           [15, 28, 33, 48, 53, 70, 75],
+        #           [14, 29, 32, 49, 52, 71, 74],
+        #           [13, 30, 31, 50, 51, 72, 73]])
+
+        ord = np.array([21, 22, 20, 19, 23, 39, 42,
+                        38, 24, 18, 17, 25, 37, 43,
+                        59, 64, 58, 44, 36, 26, 16,
+                        15, 27, 35, 45, 57, 65, 81,
+                        80, 66, 56, 46, 34, 28, 14,
+                        13, 29, 33, 47, 55, 67, 79,
+                        78, 68, 54, 48, 32, 30, 31,
+                        49, 53, 69, 77, 76, 70, 52,
+                        50, 51, 71, 75, 74, 72, 73])
+
         # Set the first image as final_image so it can run in a loop
-        final_image: npt.NDArray[np.uint8] = color_images[0]
+        final_image: npt.NDArray[np.uint8] = color_images[ord[0]]
+        cc = 0
 
         # Loop through all images in images list
-        for img in color_images[1:]:
-            matches: npt.NDArray[np.float64] = self.get_matches(final_image, img)
-            final_image = self.warp_images(img, final_image, matches)
+        for i in ord[1:]:
+            img = color_images[i-1]
+            try:
+                matches: npt.NDArray[np.float64] = self.get_matches(final_image, img)
+                final_image = self.warp_images(img, final_image, matches)
 
-            ## Debug Code: Shows each iteration and which iteration stitcher is on # pylint: disable=fixme
-            # test = resize(final_image, 30)
-            # cv2.imshow("WIP Final", test)
-            # cv2.waitKey(0)
+                ## Debug Code: Shows each iteration and which iteration stitcher is on # pylint: disable=fixme
+                test = resize(final_image, 10)
+                cv2.imshow("WIP Final", test)
+                cv2.waitKey(0)
+                cc += 1
+                print(cc)
+            except:
+                cv2.rotate(img, cv2.ROTATE_180)
+                matches: npt.NDArray[np.float64] = self.get_matches(final_image, img)
+                final_image = self.warp_images(img, final_image, matches)
+
+                ## Debug Code: Shows each iteration and which iteration stitcher is on # pylint: disable=fixme
+                test = resize(final_image, 10)
+                cv2.imshow("WIP Final", test)
+                cv2.waitKey(0)
+                cc += 1
+                print(cc)
 
         # Crop final image of black space
         final_image = self.crop_space(final_image, black_pixels)
 
         # Crop final image to match desired center coordinate with image center
-        final_image = self.template_match(final_image)
+        #final_image = self.template_match(final_image)
 
         # Cropping image to 16:9 ratio
-        final_image = self.crop_ratio(final_image)
+        #final_image = self.crop_ratio(final_image)
 
         return final_image
 
@@ -149,12 +185,12 @@ class Stitcher:
 
         # Finding the best matches
         best_matches: List[cv2.DMatch] = [
-            match_0 for match_0, match_1 in matches if match_0.distance < 0.6 * match_1.distance
+            match_0 for match_0, match_1 in matches if match_0.distance < 0.65 * match_1.distance
         ]
 
         # Set minimum match condition
-        min_match_count: int = 10
-
+        min_match_count: int = 2
+        print(len(best_matches))
         if len(best_matches) > min_match_count:
             # Convert keypoints to an argument for findHomography
             src_pts: npt.NDArray[np.float32] = np.array(
@@ -445,6 +481,11 @@ def resize(img: npt.NDArray[np.uint8], scale: int) -> npt.NDArray[np.uint8]:
     npt.NDArray[np.uint8]
         resized image.
     """
+
+    mw = 1800
+    mh = 1000
+    imgh, imgw, _ = img.shape
+    scale = int((mh/imgh)*100)
     scale_percent: int = scale  # percent of original size
     wid: int = int(img.shape[1] * scale_percent / 100)
     hei: int = int(img.shape[0] * scale_percent / 100)
