@@ -73,20 +73,17 @@ def deskew(
         [[0, 0], [orig_width, 0], [orig_width, orig_height], [0, orig_height]], dtype=np.float32
     )
 
-    # Use the walrus operator to assign the result to `intersect` only if the result is not None
+    # Numpy converts `None` to NaN
     intersects: npt.NDArray[np.float32] = np.array(
         [
-            intersect
+            pixel_intersect(point, image.shape, focal_length, rotation_deg, 1)
             for point in np.flip(src_pts, axis=1)  # use np.flip to convert XY to YX
-            if (intersect := pixel_intersect(point, image.shape, focal_length, rotation_deg, 1))
-            is not None
         ],
         dtype=np.float32,
     )
 
-    # Checks if the length of the list is less than 4. If it is, that means one of the points
-    # failed and no valid image can be generated.
-    if intersects.shape[0] < 4:
+    # Return (None, None) if any elements are NaN
+    if np.any(np.isnan(intersects)):
         return None, None
 
     # Flip the endpoints over the X axis (top left is 0,0 for images)
