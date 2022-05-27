@@ -118,16 +118,22 @@ vision_images/
 vision_videos/
 *.raw
 *.jpg
+*.JPG
 *.jpeg
 *.png
 *.bag
 *.tiff
 *.bmp
+*.dng
+*.DNG
 
 # Videos
 *.avi
 *.mov
 *.mp4
+*.MP4
+*.srt
+*.SRT
 *.m4a
 *.wmv
 *.mkv
