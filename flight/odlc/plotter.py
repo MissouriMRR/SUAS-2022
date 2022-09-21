@@ -4,6 +4,7 @@ Provides plotting functionality for visaulizing coordinate data
 
 from typing import List, Dict, Tuple
 import matplotlib.pyplot as plt
+import copy
 
 
 def plot_data(
@@ -11,7 +12,7 @@ def plot_data(
     closest_point: Dict[str, float],
     old_boundary: List[Dict[str, float]],
     new_boundary: List[Tuple[float, float]],
-    obstacles: List[Dict[str, float]],
+    obstacles: List[Dict[str, float]] = copy.deepcopy([]),
 ) -> None:
     """Plots the waypoints, obstacles, and flight path between waypoints
 
@@ -25,7 +26,10 @@ def plot_data(
         Point data for flight boundary
     new_boundary : List[Tuple[float, float]]
         Point data for shrunked flight boundary
-    obstacles : List[Dict[str, float]]
+
+    Other Parameters
+    ----------------
+    obstacles: List[Dict[str, float]]
         Point data for all obstacles
     """
 

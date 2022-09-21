@@ -6,6 +6,7 @@ from typing import List, Dict, Tuple
 from shapely.geometry import Point, Polygon
 from shapely.ops import nearest_points
 import utm
+import copy
 
 
 def latlon_to_utm(coords: Dict[str, float]) -> Dict[str, float]:
@@ -80,7 +81,7 @@ def scale_polygon(my_polygon: Polygon, scale_factor: float) -> Polygon:
 def find_closest_point(
     odlc: Dict[str, float],
     boundary_points: List[Dict[str, float]],
-    obstacles: List[Dict[str, float]],
+    obstacles: List[Dict[str, float]] = copy.deepcopy([]),
 ) -> Tuple[Dict[str, float], List[float]]:
     """Finds the closest safe point to the ODLC while staying within the flight boundary
 
@@ -90,6 +91,9 @@ def find_closest_point(
         Point data for the ODLC object
     boundary_points : List[Dict[str, float]]
         Point data which makes up the flight boundary
+
+    Other Parameters
+    ----------------
     obstacles : List[Dict[str, float]]
         Point data for the obstacles
 
