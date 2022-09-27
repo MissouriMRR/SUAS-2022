@@ -1,5 +1,5 @@
 from typing import Collection, Iterable, List, Dict
-from xml.dom import EMPTY_PREFIX
+from cell import Cell
 from helper import coord_conversion
 # constants to check:
 # P(see | height && r)
@@ -53,14 +53,20 @@ class CellMap:
         empty = self.__init_map_shape(self.get_bounds(points))
         for point in points:
             new_point = coord_conversion(point, (len(empty[0]), len(empty)))
-            empty[new_point[0]][new_point[1]] = 1
+            empty[new_point[0]][new_point[1]] = Cell(1 / self.n, False)
         
 
         return empty
 
     def display(self):
         for i in range(len(self.data)):
-            print(self.data[i])
+            row_string = ""
+            for j in range(len(self.data[0])):
+                try:
+                    row_string += f"[{self.data[i][j].probability:.1f}] "
+                except:
+                    row_string += "[0.0] "
+            print(row_string)
 
     def __init__(self, points: Collection[Iterable[int]]):
         """
@@ -69,6 +75,7 @@ class CellMap:
         points: Collection[Iterable[int]]
         a collection of x,y coordinates to define the map
         """
+        self.n = len(points)
         self.data = self.__init_map(points)
 
 
