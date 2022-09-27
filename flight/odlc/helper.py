@@ -16,14 +16,14 @@ def coord_conversion(coord: Iterable[int], system_dim: Iterable[int], start: str
 
     return (system_dim[1] - coord[1] - 1, coord[0])
 
-def get_bounds(points: Collection[Iterable[int]]) -> List[List]:
+def get_bounds(points: Collection[Iterable[float | int]]) -> List[List]:
     """
     returns the vertices of the smallest square that encompasses all
     the given points.
 
     Parameters
     ----------
-    points: Collection[Iterable[int]]
+    points: Collection[Iterable[float | int]]
     The collection of points that define the given shape
     """
     x_bounds = [float("inf"), float("-inf")]
