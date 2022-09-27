@@ -1,6 +1,6 @@
 from typing import Collection, Iterable, List, Dict
 from cell import Cell
-from helper import coord_conversion
+from helper import coord_conversion, get_bounds
 # constants to check:
 # P(see | height && r)
 # Vision radius
@@ -9,29 +9,6 @@ from helper import coord_conversion
 # greedy, reduce most unseen cells like chess
 
 class CellMap:
-    def get_bounds(self, points: Collection[Iterable[int]]) -> List[List]:
-        """
-        returns the vertices of the smallest square that encompasses all
-        the given points.
-
-        Parameters
-        ----------
-        points: Collection[Iterable[int]]
-        The collection of points that define the given shape
-        """
-        x_bounds = [float("inf"), float("-inf")]
-        y_bounds = [float("inf"), float("-inf")]
-
-        for i in range(len(points)):
-            for dim in ((0, x_bounds), (1, y_bounds)):
-
-                if points[i][dim[0]] < dim[1][0]: #smallest x | y
-                    dim[1][0] = points[i][dim[0]]
-
-                elif points[i][dim[0]] > dim[1][1]: #biggest x | y
-                    dim[1][1] = points[i][dim[0]]
-
-        return {'x': x_bounds, 'y': y_bounds}
 
     def __init_map_shape(self, bounds: Dict[chr, Iterable[int]]) -> List[List]:
         """
@@ -50,7 +27,7 @@ class CellMap:
         """
         Creates the list of the map and populates it with cells
         """
-        empty = self.__init_map_shape(self.get_bounds(points))
+        empty = self.__init_map_shape(get_bounds(points))
         for point in points:
             new_point = coord_conversion(point, (len(empty[0]), len(empty)))
             empty[new_point[0]][new_point[1]] = Cell(1 / self.n, False)
