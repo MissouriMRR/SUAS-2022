@@ -4,8 +4,19 @@ Provides plotting functionality for visaulizing coordinate data
 
 from typing import List, Dict, Tuple
 import matplotlib.pyplot as plt
+import matplotlib.patches as patches
 import copy
 
+def plot_prob_map(prob_map: object) -> None:
+    """
+    creates a visual of the current probability map.
+
+    Parameters
+    ----------
+    prob_map: object
+        the position of each cell and its probability of containing a
+        drop point.
+    """
 
 def plot_data(
     odlc: Dict[str, float],
