@@ -5,3 +5,5 @@ from dataclasses import dataclass
 class Cell:
     probability: float
     seen: bool
+    x: float
+    y: float
