@@ -19,6 +19,9 @@ class CellMap:
                    points[i][j] = Cell(0, False, None, None, False) 
         return points
 
+    def __getitem__(self, index):
+        return self.data[index]
+
     def display(self):
         for i in range(len(self.data)):
             row_string = ""
@@ -28,6 +31,9 @@ class CellMap:
                 else:
                     row_string += 'X'
             print(row_string)
+
+    def update_probs(self, ):
+        pass
 
     def __init__(self, points: Collection[Iterable[Iterable[int]]], ODLCs: int = 1):
         """
