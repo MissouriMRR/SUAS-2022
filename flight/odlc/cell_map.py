@@ -1,4 +1,4 @@
-from typing import Collection, Iterable, List, Dict
+from typing import Collection, Iterable, List, Dict, Tuple
 from cell import Cell
 from helper import coord_conversion, get_bounds
 # constants to check:
@@ -9,51 +9,46 @@ from helper import coord_conversion, get_bounds
 # greedy, reduce most unseen cells like chess
 
 class CellMap:
-
-    def __init_map_shape(self, bounds: Dict[chr, Iterable[int]]) -> List[List]:
-        """
-        returns an empty array with a shape given the bounds.
-        """
-        return_list = []
-        for _ in range(bounds['y'][0], bounds['y'][1] + 1):
-            row = []
-            for _ in range(bounds['x'][0], bounds['x'][1] + 1):
-                row.append(0)
-            return_list.append(row)
     
-        return return_list
-
-    def __init_map(self, points: Collection[Iterable[int]]) -> List[List]:
-        """
-        Creates the list of the map and populates it with cells
-        """
-        empty = self.__init_map_shape(get_bounds(points))
-        for point in points:
-            new_point = coord_conversion(point, (len(empty[0]), len(empty)))
-            empty[new_point[0]][new_point[1]] = Cell(1 / self.n, False)
-        
-
-        return empty
+    def __init_map(self, points: Iterable[Iterable[Iterable[float]]], ODLCs: int):
+        for i in range(len(points)):
+            for j in range(len(points[0])):
+                if points[i][j] != 'X':
+                    points[i][j] = Cell(ODLCs / self.n, False, points[i][j][0], points[i][j][1], True)
+                else:
+                   points[i][j] = Cell(0, False, None, None, False) 
+        return points
 
     def display(self):
         for i in range(len(self.data)):
             row_string = ""
             for j in range(len(self.data[0])):
-                try:
-                    row_string += f"[{self.data[i][j].probability:.1f}] "
-                except:
-                    row_string += "[0.0] "
+                # try:
+                #     row_string += f"[{self.data[i][j].probability:.1f}] "
+                # except:
+                #     row_string += "[0.0] "
+                if not self.data[i][j].is_valid:
+                    row_string += ' '
+                else:
+                    row_string += 'X'
             print(row_string)
 
-    def __init__(self, points: Collection[Iterable[int]]):
+    def __init__(self, points: Collection[Iterable[Iterable[int]]], ODLCs: int = 1):
         """
         Parameters
         ----------
         points: Collection[Iterable[int]]
         a collection of x,y coordinates to define the map
         """
-        self.n = len(points)
-        self.data = self.__init_map(points)
+        self.n = len(points) * len(points[0])
+        self.data = self.__init_map(points, ODLCs)
+
+        flat_list = []
+        for sub_list in points:
+            for item in sub_list:
+                if item.x != None and item.y != None:
+                    flat_list.append((item.x, item.y))
+        self.bounds = get_bounds(flat_list)
 
 
 if __name__ == "__main__":
