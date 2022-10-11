@@ -23,10 +23,6 @@ class CellMap:
         for i in range(len(self.data)):
             row_string = ""
             for j in range(len(self.data[0])):
-                # try:
-                #     row_string += f"[{self.data[i][j].probability:.1f}] "
-                # except:
-                #     row_string += "[0.0] "
                 if not self.data[i][j].is_valid:
                     row_string += ' '
                 else:
