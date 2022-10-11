@@ -7,3 +7,4 @@ class Cell:
     seen: bool
     x: float
     y: float
+    is_valid: bool
