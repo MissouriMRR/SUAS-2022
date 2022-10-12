@@ -54,8 +54,8 @@ def plot_prob_map(prob_map: object) -> None:
 
     
     for i in range(len(prob_map.data)):
-        for j in range(len(prob_map.data[0])):
-            cell = prob_map.data[i][j]
+        for j in range(len(prob_map[0])):
+            cell = prob_map[i][j]
             if cell.is_valid:
                 draw_cell(cell.x, cell.y, cell.probability)
     plt.show()
