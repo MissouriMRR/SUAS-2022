@@ -1,14 +1,9 @@
 from typing import Tuple, List
 import math
-class Seeker:
-    def __init__(self, start: Tuple[int], find_prob: float, view: int, prob_map: object) -> object:
-        self.index = start
-        self.find_prob = find_prob #probability of finding object when cell is in view
-        self.view = view
-        self.current_view = set([]) # a set of points that the drone is currently looking at
-        self.prob_map = prob_map
 
-    def get_view_vecs(self) -> List[Tuple[int]]:
+from numpy import int32
+class Seeker:
+    def __get_view_vecs(self, view: int) -> List[Tuple[int]]:
         """
         returns a list of displacement vectors that can be seen from the drone
         based upon its range.
@@ -16,12 +11,25 @@ class Seeker:
         dist = lambda p1, p2: math.sqrt((p1[0] - p2[0])** 2 + (p1[1] - p2[1])**2)
         view_list = []
 
-        for i in range(self.view * 2 + 1):
-            for j in range(self.view * 2 + 1):
-                if dist((i, j), (self.view, self.view)) <= self.view:
-                    view_list.append((i - self.view, j - self.view))
+        for i in range(view * 2 + 1):
+            for j in range(view * 2 + 1):
+                if dist((i, j), (view, view)) <= view:
+                    view_list.append((i - view, j - view))
         return view_list
-        
+
+    def __init__(self, start: Tuple[int], find_prob: float, view: int, prob_map: object) -> object:
+        self.index = start
+        self.find_prob = find_prob #probability of finding object when cell is in view
+        self.view = view
+        self.view_vecs = self.__get_view_vecs(view)
+        self.current_view = set([]) # a set of points that the drone is currently looking at
+        self.prob_map = prob_map
+
+    def get_in_view(self, prob_map) -> List[Tuple[int]]:
+        """
+        gets the points currently being looked at by the dro
+        """
+        pass        
 
     def move(self, disp_vec: Tuple[int]) -> None:
         try:
