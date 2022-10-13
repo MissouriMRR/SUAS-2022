@@ -18,7 +18,7 @@ class Seeker:
         for i in range(self.view * 2 + 1):
             for j in range(self.view * 2 + 1):
                 if dist((i, j), (self.view, self.view)) <= self.view:
-                    view_list.append((i, j))
+                    view_list.append((i - self.view, j - self.view))
         return view_list
         
 
