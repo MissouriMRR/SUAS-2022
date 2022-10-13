@@ -32,8 +32,20 @@ class CellMap:
                     row_string += 'X'
             print(row_string)
 
-    def update_probs(self, ):
-        pass
+    def update_probs(self, pos: Tuple[int], seeker: object):
+        """
+        Given a drone at position pos[0], pos[1], this function updates the probabalities
+        of each cell to reflect that the seeker has observed them.
+        """
+
+        for disp_vec in seeker.view_vecs:
+            try:
+                poi = (pos[0] + disp_vec[0], pos[1] + disp_vec[1])
+                if poi[0] >= 0 and poi[1] >= 0 and poi not in seeker.current_view:
+                    self[poi[0]][poi[1]].probability *= seeker.find_prob
+            except:
+                pass
+        seeker.current_view = seeker.get_in_view(self)
 
     def __init__(self, points: Collection[Iterable[Iterable[int]]], ODLCs: int = 1):
         """
