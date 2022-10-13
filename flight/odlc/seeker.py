@@ -1,7 +1,6 @@
 from typing import Tuple, List
 import math
 
-from numpy import int32
 class Seeker:
     def __get_view_vecs(self, view: int) -> List[Tuple[int]]:
         """
@@ -18,7 +17,7 @@ class Seeker:
         return view_list
 
     def __init__(self, start: Tuple[int], find_prob: float, view: int, prob_map: object) -> object:
-        self.index = start
+        self.pos = start
         self.find_prob = find_prob #probability of finding object when cell is in view
         self.view = view
         self.view_vecs = self.__get_view_vecs(view)
@@ -29,11 +28,21 @@ class Seeker:
         """
         gets the points currently being looked at by the dro
         """
-        pass        
+        in_view = []
+        for disp_vec in self.view_vecs:
+            try:
+                poi = (self.pos[0] + disp_vec[0], self.pos[1] + disp_vec[1])
+                if poi[0] >= 0 and poi[1] >= 0 and poi:
+                    in_view.append(poi)
+            except:
+                pass
+
+        return in_view
+
 
     def move(self, disp_vec: Tuple[int]) -> None:
         try:
-            new_pos = [self.index[0] + disp_vec[0], self.index[1] + disp_vec[1]]
+            new_pos = [self.pos[0] + disp_vec[0], self.pos[1] + disp_vec[1]]
 
             if self.prob_map[new_pos[0]][new_pos[1]].is_valid:
                 self.prob_map.update_probs(new_pos, self)
