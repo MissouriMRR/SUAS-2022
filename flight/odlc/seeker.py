@@ -8,7 +8,7 @@ class Seeker:
         self.current_view = set([]) # a set of points that the drone is currently looking at
         self.prob_map = prob_map
 
-    def get_in_view(self) -> List[Tuple[int]]:
+    def get_view_vecs(self) -> List[Tuple[int]]:
         """
         returns a list of displacement vectors that can be seen from the drone
         based upon its range.
