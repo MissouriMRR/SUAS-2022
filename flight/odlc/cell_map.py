@@ -24,12 +24,14 @@ class CellMap:
     def __getitem__(self, index):
         return self.data[index]
 
-    def display(self):
+    def display(self, drone_pos: Tuple[int] | None = None):
         for i in range(len(self.data)):
             row_string = ""
             for j in range(len(self.data[0])):
                 if not self.data[i][j].is_valid:
                     row_string += ' '
+                elif drone_pos == (i, j):
+                    row_string += 'S'
                 else:
                     row_string += 'X'
             print(row_string)
@@ -84,8 +86,7 @@ if __name__ == "__main__":
         (38.3164700703248,-76.55255360208943),
         (38.31722979755967,-76.5570186342245)
     ]
-
-    x = segment(test_cloud)
-    c = CellMap(x, 100)
-    c.display()
-
+    area = segment(test_cloud)
+    cell_map = CellMap(area, 4)
+    seeker = Seeker((4, 108), 0.85, 4, cell_map)
+    cell_map.display(seeker.pos)
