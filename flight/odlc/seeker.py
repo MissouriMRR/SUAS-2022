@@ -5,6 +5,7 @@ class Seeker:
         self.index = start
         self.find_prob = find_prob #probability of finding object when cell is in view
         self.view = view
+        self.current_view = set([]) # a set of points that the drone is currently looking at
         self.prob_map = prob_map
 
     def get_in_view(self) -> List[Tuple[int]]:
