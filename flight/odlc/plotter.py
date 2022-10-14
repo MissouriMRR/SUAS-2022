@@ -38,7 +38,7 @@ def draw_cell(x: float, y: float, p: float) -> None:
     )
     
 
-def plot_prob_map(prob_map: object) -> None:
+def plot_prob_map(prob_map: object, seen_mode: bool = False) -> None:
     """
     creates a visual of the current probability map.
 
@@ -49,15 +49,19 @@ def plot_prob_map(prob_map: object) -> None:
         drop point.
     """
     MARGIN = 0.001
-    plt.xlim(prob_map.bounds['x'][0]- MARGIN, prob_map.bounds['x'][1] + MARGIN)
-    plt.ylim(prob_map.bounds['y'][0] - MARGIN, prob_map.bounds['y'][1] + MARGIN)
+    size = max(abs(prob_map.bounds['x'][0] - prob_map.bounds['x'][1]),abs(prob_map.bounds['y'][0] - prob_map.bounds['y'][1]))
+    plt.xlim(prob_map.bounds['x'][0]- MARGIN, prob_map.bounds['x'][0] + size + MARGIN)
+    plt.ylim(prob_map.bounds['y'][0] - MARGIN, prob_map.bounds['y'][0] + size + MARGIN)
 
     
     for i in range(len(prob_map.data)):
         for j in range(len(prob_map[0])):
             cell = prob_map[i][j]
             if cell.is_valid:
-                draw_cell(cell.x, cell.y, cell.probability)
+                if seen_mode:
+                    draw_cell(cell.x, cell.y, 1 if cell.seen else 0)
+                else:
+                    draw_cell(cell.x, cell.y, cell.probability)
     plt.show()
 
 
