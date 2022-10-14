@@ -46,7 +46,7 @@ class CellMap:
             try:
                 poi = (pos[0] + disp_vec[0], pos[1] + disp_vec[1])
                 if poi[0] >= 0 and poi[1] >= 0 and poi not in seeker.current_view:
-                    self[poi[0]][poi[1]].probability *= seeker.find_prob
+                    self[poi[0]][poi[1]].probability *= 1 - seeker.find_prob
             except:
                 pass
         seeker.current_view = seeker.get_in_view(self)
