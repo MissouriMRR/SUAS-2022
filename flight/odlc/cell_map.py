@@ -12,6 +12,13 @@ from segmenter import segment
 
 class CellMap:
     
+    def __get_valids(self, points: Iterable[Iterable[Iterable[float]]]):
+        count = 0
+        for i in range(len(points)):
+            for j in range(len(points[0])):
+                if points[i][j] == 'X': count += 1
+        return count
+
     def __init_map(self, points: Iterable[Iterable[Iterable[float]]], ODLCs: int):
         for i in range(len(points)):
             for j in range(len(points[0])):
@@ -59,7 +66,7 @@ class CellMap:
         points: Collection[Iterable[int]]
         a collection of x,y coordinates to define the map
         """
-        self.n = len(points) * len(points[0])
+        self.n = self.__get_valids(points)
         self.data = self.__init_map(points, ODLCs)
 
         flat_list = []
