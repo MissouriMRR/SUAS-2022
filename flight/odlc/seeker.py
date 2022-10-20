@@ -26,14 +26,14 @@ class Seeker:
 
     def get_in_view(self, prob_map) -> List[Tuple[int]]:
         """
-        gets the points currently being looked at by the dro
+        gets the points currently being looked at by the drone
         """
         in_view = []
         for disp_vec in self.view_vecs:
             try:
                 poi = (self.pos[0] + disp_vec[0], self.pos[1] + disp_vec[1])
-                if poi[0] >= 0 and poi[1] >= 0 and poi:
-                    in_view.append(poi)
+                if poi[0] >= 0 and poi[1] >= 0 and prob_map[poi[0]][poi[1]].is_valid:
+                    in_view.append(prob_map[poi[0]][poi[1]])
             except:
                 pass
 
@@ -46,6 +46,8 @@ class Seeker:
 
             if self.prob_map[new_pos[0]][new_pos[1]].is_valid:
                 self.prob_map.update_probs(new_pos, self)
+                self.pos = new_pos
+                self.current_view = self.get_in_view(self.prob_map)
             else:
                 pass
         except:

@@ -2,6 +2,7 @@ from plotter import plot_prob_map
 from seeker import Seeker
 from cell_map import CellMap
 from segmenter import segment
+from random import randint
 
 
 if __name__ == "__main__":
@@ -22,7 +23,9 @@ if __name__ == "__main__":
         (38.31722979755967,-76.5570186342245)
     ]
     area = segment(test_points)
-    cell_map = CellMap(area, 4)
-    seeker = Seeker((4, 108), 0.85, 4, cell_map)
-    seeker.move((0, 1))
-    cell_map.display(seeker.pos)
+    cell_map = CellMap(area, 30)
+    seeker = Seeker((4, 108), 1, 4, cell_map)
+
+    for _ in range(2000):
+        seeker.move((randint(-1, 1), randint(-1, 0)))
+    plot_prob_map(cell_map, True)

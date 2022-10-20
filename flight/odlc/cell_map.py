@@ -47,9 +47,10 @@ class CellMap:
                 poi = (pos[0] + disp_vec[0], pos[1] + disp_vec[1])
                 if poi[0] >= 0 and poi[1] >= 0 and poi not in seeker.current_view:
                     self[poi[0]][poi[1]].probability *= 1 - seeker.find_prob
+                    self[poi[0]][poi[1]].seen = True
+                    
             except:
                 pass
-        seeker.current_view = seeker.get_in_view(self)
 
     def __init__(self, points: Collection[Iterable[Iterable[int]]], ODLCs: int = 1):
         """
