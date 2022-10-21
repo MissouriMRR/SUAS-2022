@@ -36,7 +36,17 @@ def draw_cell(x: float, y: float, p: float) -> None:
             color=get_p_color(p)
         )
     )
-    
+
+def get_normalized_prob(prob_map: object) -> List[float]:
+    low, high = float("inf"), float("-inf")
+    for i in range(len(prob_map.data)):
+        for j in range(len(prob_map[0])):
+            prob = prob_map[i][j].probability
+            if prob > high:
+                high = prob
+            elif prob < low:
+                low = prob
+    return [low, high]
 
 def plot_prob_map(prob_map: object, seen_mode: bool = False) -> None:
     """
@@ -48,6 +58,7 @@ def plot_prob_map(prob_map: object, seen_mode: bool = False) -> None:
         the position of each cell and its probability of containing a
         drop point.
     """
+    prob_range = get_normalized_prob(prob_map)
     MARGIN = 0.001
     size = max(abs(prob_map.bounds['x'][0] - prob_map.bounds['x'][1]),abs(prob_map.bounds['y'][0] - prob_map.bounds['y'][1]))
     plt.xlim(prob_map.bounds['x'][0]- MARGIN, prob_map.bounds['x'][0] + size + MARGIN)
@@ -61,7 +72,7 @@ def plot_prob_map(prob_map: object, seen_mode: bool = False) -> None:
                 if seen_mode:
                     draw_cell(cell.x, cell.y, 1 if cell.seen else 0)
                 else:
-                    draw_cell(cell.x, cell.y, cell.probability)
+                    draw_cell(cell.x, cell.y, (cell.probability - prob_range[0]) / (prob_range[1] - prob_range[0]))
     plt.show()
 
 
